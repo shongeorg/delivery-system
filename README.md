@@ -2,6 +2,8 @@
 
 Full-stack food delivery platform built with modern technologies.
 
+![Backend Cover](./backend-cover.jpg)
+
 ---
 
 ## Stack
