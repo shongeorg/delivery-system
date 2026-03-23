@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import { getCategory, addToCart } from '$lib/api';
 	import type { Product, Category } from '$lib/types';
 	import { cartStore } from '$lib/stores/cartStore';
@@ -9,21 +8,38 @@
 
 	let category: Category | null = $state(null);
 	let products: Product[] = $state([]);
+	let slug = $state('');
 	let loading = $state(true);
 	
 	let currentPage = $state(1);
 	let lastPage = $state(1);
 	let totalProducts = $state(0);
 
+	function getPageFromURL(): number {
+		if (typeof window !== 'undefined') {
+			const params = new URLSearchParams(window.location.search);
+			return parseInt(params.get('page') || '1');
+		}
+		return 1;
+	}
+
+	function getSlugFromURL(): string {
+		if (typeof window !== 'undefined') {
+			const path = window.location.pathname;
+			const parts = path.split('/').filter(Boolean);
+			return parts[parts.length - 1] || '';
+		}
+		return '';
+	}
+
 	onMount(async () => {
-		const p = page.data.page ? parseInt(page.data.page as string) : 1;
-		currentPage = p;
+		slug = getSlugFromURL();
+		currentPage = getPageFromURL();
 		await loadCategory();
 	});
 
 	async function loadCategory() {
 		loading = true;
-		const slug = page.params.slug;
 		const res = await getCategory(slug, currentPage, 12);
 		if (res.data) {
 			category = res.data.category;
@@ -35,7 +51,7 @@
 	}
 
 	function handlePageChange(newPage: number) {
-		goto(`/category/${page.params.slug}?page=${newPage}`);
+		goto(`/category/${slug}?page=${newPage}`);
 	}
 
 	async function handleAddToCart(product: Product) {

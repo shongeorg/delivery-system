@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import { getProducts, getCategories, addToCart } from '$lib/api';
 	import type { Product, Category } from '$lib/types';
 	import { cartStore } from '$lib/stores/cartStore';
@@ -15,9 +14,16 @@
 	let lastPage = $state(1);
 	let totalProducts = $state(0);
 
+	function getPageFromURL(): number {
+		if (typeof window !== 'undefined') {
+			const params = new URLSearchParams(window.location.search);
+			return parseInt(params.get('page') || '1');
+		}
+		return 1;
+	}
+
 	onMount(async () => {
-		const p = page.data.page ? parseInt(page.data.page as string) : 1;
-		currentPage = p;
+		currentPage = getPageFromURL();
 		
 		const categoriesRes = await getCategories();
 		if (categoriesRes.data) categories = categoriesRes.data;

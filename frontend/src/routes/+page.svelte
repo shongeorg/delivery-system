@@ -16,9 +16,16 @@
 	let totalProducts = $state(0);
 	let productsLoading = $state(false);
 
+	function getPageFromURL(): number {
+		if (typeof window !== 'undefined') {
+			const params = new URLSearchParams(window.location.search);
+			return parseInt(params.get('page') || '1');
+		}
+		return 1;
+	}
+
 	onMount(async () => {
-		const p = page.data.page ? parseInt(page.data.page as string) : 1;
-		currentPage = p;
+		currentPage = getPageFromURL();
 		
 		const categoriesRes = await getCategories();
 		if (categoriesRes.data) categories = categoriesRes.data;
