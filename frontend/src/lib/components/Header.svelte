@@ -2,7 +2,7 @@
 	import { userStore } from '$lib/stores/userStore';
 	import type { User } from '$lib/types';
 
-	let user: User | null = null;
+	let user = $state<User | null>(null);
 
 	userStore.subscribe(value => {
 		user = value;

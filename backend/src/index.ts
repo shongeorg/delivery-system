@@ -26,7 +26,14 @@ dotenv.config();
 const app = new Hono();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3031', 'http://localhost:3000'],
+  credentials: true,
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Length'],
+  maxAge: 86400
+}));
 app.use(logger());
 
 // API Routes

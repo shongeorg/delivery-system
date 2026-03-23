@@ -4,14 +4,14 @@
 	import { register } from '$lib/api';
 	import type { User } from '$lib/types';
 
-	let name = '';
-	let email = '';
-	let password = '';
-	let confirmPassword = '';
-	let phone = '';
-	let address = '';
-	let error = '';
-	let loading = false;
+	let name = $state('');
+	let email = $state('');
+	let password = $state('');
+	let confirmPassword = $state('');
+	let phone = $state('');
+	let address = $state('');
+	let error = $state('');
+	let loading = $state(false);
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
