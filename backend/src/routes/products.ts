@@ -23,12 +23,33 @@ const createProductSchema = z.object({
   })).optional(),
 });
 
-// Get all products (public)
+// Get all products with pagination (public)
 productsRouter.get('/', async (c) => {
-  const allProducts = await db.query.products.findMany({
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = parseInt(c.req.query('limit') || '25');
+  const offset = (page - 1) * limit;
+
+  // Get total count
+  const allProducts = await db.query.products.findMany();
+  const total = allProducts.length;
+  const lastPage = Math.ceil(total / limit);
+
+  // Get paginated products
+  const paginatedProducts = await db.query.products.findMany({
     orderBy: (products, { desc }) => [desc(products.createdAt)],
+    limit,
+    offset,
   });
-  return c.json(allProducts);
+
+  return c.json({
+    products: paginatedProducts,
+    pagination: {
+      page,
+      limit,
+      total,
+      lastPage,
+    },
+  });
 });
 
 // Get product by slug (public)

@@ -5,7 +5,7 @@ import { db } from '../db/index.js';
 import { categories, products, productCategories } from '../db/schema.js';
 import { authMiddleware, allowRoles } from '../middleware/auth.js';
 import { generateUniqueSlug } from '../utils/slug.js';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 const categoriesRouter = new Hono();
 
@@ -23,10 +23,13 @@ categoriesRouter.get('/', async (c) => {
   return c.json(allCategories);
 });
 
-// Get category by slug with products (public)
+// Get category by slug with paginated products (public)
 categoriesRouter.get('/:slug', async (c) => {
   const slug = c.req.param('slug');
-  
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = parseInt(c.req.query('limit') || '25');
+  const offset = (page - 1) * limit;
+
   const category = await db.query.categories.findFirst({
     where: eq(categories.slug, slug),
   });
@@ -35,17 +38,38 @@ categoriesRouter.get('/:slug', async (c) => {
     return c.json({ error: 'Category not found', code: 404 }, 404);
   }
 
-  const categoryProducts = await db
+  // Get all product IDs for this category
+  const allCategoryProducts = await db
     .select({
-      product: products,
+      productId: products.id,
     })
     .from(products)
     .innerJoin(productCategories, eq(products.id, productCategories.productId))
     .where(eq(productCategories.categoryId, category.id));
 
+  const total = allCategoryProducts.length;
+  const lastPage = Math.ceil(total / limit);
+
+  // Get paginated products
+  const productIds = allCategoryProducts.map(p => p.productId);
+  const paginatedProductIds = productIds.slice(offset, offset + limit);
+
+  const categoryProducts = await db
+    .select({
+      product: products,
+    })
+    .from(products)
+    .where(inArray(products.id, paginatedProductIds));
+
   return c.json({
-    ...category,
+    category,
     products: categoryProducts.map(p => p.product),
+    pagination: {
+      page,
+      limit,
+      total,
+      lastPage,
+    },
   });
 });
 
