@@ -18,16 +18,32 @@ const ProductSchema = z.object({
   createdBy: z.string().nullable(),
 });
 
-// Get all products
+const PaginationSchema = z.object({
+  page: z.number(),
+  limit: z.number(),
+  total: z.number(),
+  lastPage: z.number(),
+});
+
+// Get all products with pagination
 const getProductsRoute = createRoute({
   method: 'get',
   path: '/',
+  request: {
+    query: z.object({
+      page: z.string().optional().default('1'),
+      limit: z.string().optional().default('25'),
+    }),
+  },
   responses: {
     200: {
-      description: 'List of products',
+      description: 'List of products with pagination',
       content: {
         'application/json': {
-          schema: z.array(ProductSchema),
+          schema: z.object({
+            products: z.array(ProductSchema),
+            pagination: PaginationSchema,
+          }),
         },
       },
     },
@@ -36,10 +52,29 @@ const getProductsRoute = createRoute({
 });
 
 productsOpenAPI.openapi(getProductsRoute, async (c) => {
-  const allProducts = await db.query.products.findMany({
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = parseInt(c.req.query('limit') || '25');
+  const offset = (page - 1) * limit;
+
+  const allProducts = await db.query.products.findMany();
+  const total = allProducts.length;
+  const lastPage = Math.ceil(total / limit);
+
+  const paginatedProducts = await db.query.products.findMany({
     orderBy: (products, { desc }) => [desc(products.createdAt)],
+    limit,
+    offset,
   });
-  return c.json(allProducts);
+
+  return c.json({
+    products: paginatedProducts,
+    pagination: {
+      page,
+      limit,
+      total,
+      lastPage,
+    },
+  });
 });
 
 // Get product by slug
