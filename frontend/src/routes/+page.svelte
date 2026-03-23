@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
+	import { page } from '$app/stores';
 	import { getProducts, getCategories, addToCart } from '$lib/api';
 	import type { Product, Category } from '$lib/types';
 	import { cartStore } from '$lib/stores/cartStore';
@@ -16,35 +16,17 @@
 	let totalProducts = $state(0);
 	let productsLoading = $state(false);
 
+	// Get page from URL
 	function getPageFromURL(): number {
-		if (typeof window !== 'undefined') {
-			const params = new URLSearchParams(window.location.search);
-			return parseInt(params.get('page') || '1');
-		}
-		return 1;
+		const params = new URLSearchParams($page.url.search);
+		return parseInt(params.get('page') || '1');
 	}
 
-	onMount(async () => {
-		const categoriesRes = await getCategories();
-		if (categoriesRes.data) categories = categoriesRes.data;
-		loading = false;
-		
-		currentPage = getPageFromURL();
-		await loadProducts();
-	});
-
-	// Watch for URL changes (pagination)
-	$effect(() => {
-		const newPage = getPageFromURL();
-		if (newPage !== currentPage && !productsLoading) {
-			currentPage = newPage;
-			loadProducts();
-		}
-	});
-
-	async function loadProducts() {
+	// Load products when page changes
+	async function loadProducts(pageNum: number) {
 		productsLoading = true;
-		const productsRes = await getProducts(currentPage, 12);
+		currentPage = pageNum;
+		const productsRes = await getProducts(pageNum, 12);
 		if (productsRes.data) {
 			products = productsRes.data.products;
 			lastPage = productsRes.data.pagination.lastPage;
@@ -52,6 +34,24 @@
 		}
 		productsLoading = false;
 	}
+
+	// Watch for URL changes
+	$effect(() => {
+		const p = getPageFromURL();
+		if (p !== currentPage && !productsLoading) {
+			loadProducts(p);
+		}
+	});
+
+	// Initial load
+	onMount(async () => {
+		const categoriesRes = await getCategories();
+		if (categoriesRes.data) categories = categoriesRes.data;
+		loading = false;
+		
+		const initialPage = getPageFromURL();
+		await loadProducts(initialPage);
+	});
 
 	function handlePageChange(pageNum: number) {
 		goto(`/?page=${pageNum}`);

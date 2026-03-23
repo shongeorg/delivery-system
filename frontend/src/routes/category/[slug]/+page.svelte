@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { getCategory, addToCart } from '$lib/api';
 	import type { Product, Category } from '$lib/types';
 	import { cartStore } from '$lib/stores/cartStore';
@@ -14,52 +15,45 @@
 	let currentPage = $state(1);
 	let lastPage = $state(1);
 	let totalProducts = $state(0);
+	let isLoading = $state(false);
 
 	function getPageFromURL(): number {
-		if (typeof window !== 'undefined') {
-			const params = new URLSearchParams(window.location.search);
-			return parseInt(params.get('page') || '1');
-		}
-		return 1;
+		const params = new URLSearchParams($page.url.search);
+		return parseInt(params.get('page') || '1');
 	}
 
 	function getSlugFromURL(): string {
-		if (typeof window !== 'undefined') {
-			const path = window.location.pathname;
-			const parts = path.split('/').filter(Boolean);
-			return parts[parts.length - 1] || '';
-		}
-		return '';
+		const parts = $page.url.pathname.split('/').filter(Boolean);
+		return parts[parts.length - 1] || '';
 	}
 
-	onMount(async () => {
-		slug = getSlugFromURL();
-		currentPage = getPageFromURL();
-		await loadCategory();
-	});
-
-	// Watch for URL changes (pagination or slug change)
-	$effect(() => {
-		const newPage = getPageFromURL();
-		const newSlug = getSlugFromURL();
-		if ((newPage !== currentPage || newSlug !== slug) && !loading) {
-			currentPage = newPage;
-			slug = newSlug;
-			loadCategory();
-		}
-	});
-
-	async function loadCategory() {
-		loading = true;
-		const res = await getCategory(slug, currentPage, 12);
+	async function loadCategoryData(pageNum: number, categorySlug: string) {
+		isLoading = true;
+		currentPage = pageNum;
+		slug = categorySlug;
+		const res = await getCategory(categorySlug, pageNum, 12);
 		if (res.data) {
 			category = res.data.category;
 			products = res.data.products;
 			lastPage = res.data.pagination.lastPage;
 			totalProducts = res.data.pagination.total;
 		}
-		loading = false;
+		isLoading = false;
 	}
+
+	$effect(() => {
+		const p = getPageFromURL();
+		const s = getSlugFromURL();
+		if ((p !== currentPage || s !== slug) && !isLoading) {
+			loadCategoryData(p, s);
+		}
+	});
+
+	onMount(async () => {
+		const initialPage = getPageFromURL();
+		const initialSlug = getSlugFromURL();
+		await loadCategoryData(initialPage, initialSlug);
+	});
 
 	function handlePageChange(newPage: number) {
 		goto(`/category/${slug}?page=${newPage}`);
