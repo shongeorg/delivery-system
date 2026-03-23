@@ -453,7 +453,7 @@ https://mcp.scalar.com/mcp/01af2be0-95de-4a28-a452-71f3514f3adf
 # Порт-мапа:
 
 🔧 Backend (Hono + Neon): http://localhost:3000 ✅
-🎨 Frontend (SvelteKit) : http://localhost:3031
-📦 Courier App (Vue PWA): http://localhost:3032
+🎨 Frontend (SvelteKit) : http://localhost:3031 ✅
+📦 Courier App (Vue PWA): http://localhost:3032 ✅
 👨‍🍳 Chef Panel (React): http://localhost:3033
 👑 Owner Panel (Angular): http://localhost:3034
