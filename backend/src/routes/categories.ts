@@ -23,6 +23,60 @@ categoriesRouter.get('/', async (c) => {
   return c.json(allCategories);
 });
 
+// Get category by slug query param (for UIs that can't use path params)
+categoriesRouter.get('/by-slug', async (c) => {
+  const slug = c.req.query('slug');
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = parseInt(c.req.query('limit') || '25');
+  const offset = (page - 1) * limit;
+
+  if (!slug) {
+    return c.json({ error: 'Slug query parameter required', code: 400 }, 400);
+  }
+
+  const category = await db.query.categories.findFirst({
+    where: eq(categories.slug, slug),
+  });
+
+  if (!category) {
+    return c.json({ error: 'Category not found', code: 404 }, 404);
+  }
+
+  // Get all product IDs for this category
+  const allCategoryProducts = await db
+    .select({
+      productId: products.id,
+    })
+    .from(products)
+    .innerJoin(productCategories, eq(products.id, productCategories.productId))
+    .where(eq(productCategories.categoryId, category.id));
+
+  const total = allCategoryProducts.length;
+  const lastPage = Math.ceil(total / limit);
+
+  // Get paginated products
+  const productIds = allCategoryProducts.map(p => p.productId);
+  const paginatedProductIds = productIds.slice(offset, offset + limit);
+
+  const categoryProducts = await db
+    .select({
+      product: products,
+    })
+    .from(products)
+    .where(inArray(products.id, paginatedProductIds));
+
+  return c.json({
+    category,
+    products: categoryProducts.map(p => p.product),
+    pagination: {
+      page,
+      limit,
+      total,
+      lastPage,
+    },
+  });
+});
+
 // Get category by slug with paginated products (public)
 categoriesRouter.get('/:slug', async (c) => {
   const slug = c.req.param('slug');

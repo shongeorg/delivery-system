@@ -39,7 +39,7 @@ categoriesOpenAPI.openapi(getCategoriesRoute, async (c) => {
   return c.json(allCategories);
 });
 
-// Get category by slug with pagination
+// Get category by slug with pagination - supports both path param and query param
 const getCategoryRoute = createRoute({
   method: 'get',
   path: '/:slug',
@@ -79,6 +79,91 @@ const getCategoryRoute = createRoute({
 
 categoriesOpenAPI.openapi(getCategoryRoute, async (c) => {
   const slug = c.req.param('slug');
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = parseInt(c.req.query('limit') || '25');
+  const offset = (page - 1) * limit;
+
+  const category = await db.query.categories.findFirst({
+    where: eq(categories.slug, slug),
+  });
+
+  if (!category) {
+    return c.json({ error: 'Category not found', code: 404 }, 404);
+  }
+
+  // Get all product IDs for this category
+  const allCategoryProducts = await db
+    .select({
+      productId: products.id,
+    })
+    .from(products)
+    .innerJoin(productCategories, eq(products.id, productCategories.productId))
+    .where(eq(productCategories.categoryId, category.id));
+
+  const total = allCategoryProducts.length;
+  const lastPage = Math.ceil(total / limit);
+
+  // Get paginated products
+  const productIds = allCategoryProducts.map(p => p.productId);
+  const paginatedProductIds = productIds.slice(offset, offset + limit);
+
+  const categoryProducts = await db
+    .select({
+      product: products,
+    })
+    .from(products)
+    .where(inArray(products.id, paginatedProductIds));
+
+  return c.json({
+    category,
+    products: categoryProducts.map(p => p.product),
+    pagination: {
+      page,
+      limit,
+      total,
+      lastPage,
+    },
+  });
+});
+
+// Alternative endpoint using query param for slug (for UIs that don't support path params)
+const getCategoryByQueryRoute = createRoute({
+  method: 'get',
+  path: '/by-slug',
+  request: {
+    query: z.object({
+      slug: z.string(),
+      page: z.string().optional().default('1'),
+      limit: z.string().optional().default('25'),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Category with paginated products',
+      content: {
+        'application/json': {
+          schema: z.object({
+            category: CategorySchema,
+            products: z.array(z.any()),
+            pagination: z.object({
+              page: z.number(),
+              limit: z.number(),
+              total: z.number(),
+              lastPage: z.number(),
+            }),
+          }),
+        },
+      },
+    },
+    404: {
+      description: 'Category not found',
+    },
+  },
+  tags: ['Categories'],
+});
+
+categoriesOpenAPI.openapi(getCategoryByQueryRoute, async (c) => {
+  const slug = c.req.query('slug');
   const page = parseInt(c.req.query('page') || '1');
   const limit = parseInt(c.req.query('limit') || '25');
   const offset = (page - 1) * limit;
