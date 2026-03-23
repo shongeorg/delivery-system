@@ -25,13 +25,21 @@
 	}
 
 	onMount(async () => {
-		currentPage = getPageFromURL();
-		
 		const categoriesRes = await getCategories();
 		if (categoriesRes.data) categories = categoriesRes.data;
 		loading = false;
 		
+		currentPage = getPageFromURL();
 		await loadProducts();
+	});
+
+	// Watch for URL changes (pagination)
+	$effect(() => {
+		const newPage = getPageFromURL();
+		if (newPage !== currentPage && !productsLoading) {
+			currentPage = newPage;
+			loadProducts();
+		}
 	});
 
 	async function loadProducts() {

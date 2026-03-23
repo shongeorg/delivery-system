@@ -38,6 +38,17 @@
 		await loadCategory();
 	});
 
+	// Watch for URL changes (pagination or slug change)
+	$effect(() => {
+		const newPage = getPageFromURL();
+		const newSlug = getSlugFromURL();
+		if ((newPage !== currentPage || newSlug !== slug) && !loading) {
+			currentPage = newPage;
+			slug = newSlug;
+			loadCategory();
+		}
+	});
+
 	async function loadCategory() {
 		loading = true;
 		const res = await getCategory(slug, currentPage, 12);

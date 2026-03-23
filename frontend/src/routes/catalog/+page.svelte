@@ -32,6 +32,15 @@
 		await loadProducts();
 	});
 
+	// Watch for URL changes (pagination)
+	$effect(() => {
+		const newPage = getPageFromURL();
+		if (newPage !== currentPage && !loading) {
+			currentPage = newPage;
+			loadProducts();
+		}
+	});
+
 	async function loadProducts() {
 		loading = true;
 		const productsRes = await getProducts(currentPage, 12);
