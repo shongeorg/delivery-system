@@ -30,7 +30,7 @@ inventoryRouter.get('/', authMiddleware, allowRoles(['owner', 'admin', 'chef']),
 
 // Get inventory by slug
 inventoryRouter.get('/:slug', authMiddleware, allowRoles(['owner', 'admin', 'chef']), async (c) => {
-  const slug = c.req.param('slug');
+  const slug = c.req.param('slug')!;
   
   const item = await db.query.inventory.findFirst({
     where: eq(inventory.slug, slug),

@@ -14,7 +14,8 @@ const ProductSchema = z.object({
   price: z.string(),
   description: z.string().nullable(),
   cover: z.string().nullable(),
-  createdAt: z.string(),
+  createdAt: z.any(),
+  createdBy: z.string().nullable(),
 });
 
 // Get all products
