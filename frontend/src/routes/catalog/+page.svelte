@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { getProducts, getCategories, addToCart } from '$lib/api';
 	import type { Product, Category } from '$lib/types';
 	import { cartStore } from '$lib/stores/cartStore';
@@ -9,13 +11,14 @@
 	let categories: Category[] = $state([]);
 	let loading = $state(true);
 	
-	// Pagination
 	let currentPage = $state(1);
 	let lastPage = $state(1);
 	let totalProducts = $state(0);
-	let productsLoading = $state(false);
 
 	onMount(async () => {
+		const p = page.data.page ? parseInt(page.data.page as string) : 1;
+		currentPage = p;
+		
 		const categoriesRes = await getCategories();
 		if (categoriesRes.data) categories = categoriesRes.data;
 		loading = false;
@@ -24,20 +27,18 @@
 	});
 
 	async function loadProducts() {
-		productsLoading = true;
+		loading = true;
 		const productsRes = await getProducts(currentPage, 12);
 		if (productsRes.data) {
 			products = productsRes.data.products;
 			lastPage = productsRes.data.pagination.lastPage;
 			totalProducts = productsRes.data.pagination.total;
 		}
-		productsLoading = false;
+		loading = false;
 	}
 
-	function handlePageChange(page: number) {
-		currentPage = page;
-		loadProducts();
-		window.scrollTo({ top: 0, behavior: 'smooth' });
+	function handlePageChange(pageNum: number) {
+		goto(`/catalog?page=${pageNum}`);
 	}
 
 	async function handleAddToCart(product: Product) {
@@ -68,7 +69,7 @@
 					</a>
 					{#each categories as category}
 						<a
-							href="/catalog/{category.slug}"
+							href="/category/{category.slug}"
 							class="px-4 py-2 rounded-full border-2 border-gray-300 hover:border-indigo-600 transition"
 						>
 							{category.name}
@@ -79,7 +80,7 @@
 		</div>
 
 		<!-- Products Grid -->
-		{#if productsLoading}
+		{#if loading}
 			<div class="text-center py-12">
 				<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
 				<p class="mt-4 text-gray-600">Loading products...</p>
@@ -90,7 +91,7 @@
 			</div>
 		{:else}
 			<div class="flex items-center justify-between mb-4">
-				<p class="text-gray-600">Showing {products.length} of {totalProducts} products</p>
+				<p class="text-gray-600">Showing {products.length} of {totalProducts} products (Page {currentPage}/{lastPage})</p>
 			</div>
 			
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

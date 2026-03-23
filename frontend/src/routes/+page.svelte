@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { getProducts, getCategories, addToCart } from '$lib/api';
 	import type { Product, Category } from '$lib/types';
 	import { cartStore } from '$lib/stores/cartStore';
@@ -8,15 +10,16 @@
 	let products: Product[] = $state([]);
 	let categories: Category[] = $state([]);
 	let loading = $state(true);
-	let selectedCategory = $state('');
 	
-	// Pagination
 	let currentPage = $state(1);
 	let lastPage = $state(1);
 	let totalProducts = $state(0);
 	let productsLoading = $state(false);
 
 	onMount(async () => {
+		const p = page.data.page ? parseInt(page.data.page as string) : 1;
+		currentPage = p;
+		
 		const categoriesRes = await getCategories();
 		if (categoriesRes.data) categories = categoriesRes.data;
 		loading = false;
@@ -35,22 +38,12 @@
 		productsLoading = false;
 	}
 
-	function handlePageChange(page: number) {
-		currentPage = page;
-		loadProducts();
-		window.scrollTo({ top: 0, behavior: 'smooth' });
+	function handlePageChange(pageNum: number) {
+		goto(`/?page=${pageNum}`);
 	}
 
 	function filterByCategory(categorySlug: string) {
-		selectedCategory = categorySlug;
-		currentPage = 1;
-		loadProducts();
-	}
-
-	function clearFilter() {
-		selectedCategory = '';
-		currentPage = 1;
-		loadProducts();
+		goto(`/category/${categorySlug}?page=1`);
 	}
 
 	async function handleAddToCart(product: Product) {
@@ -84,7 +77,7 @@
 				{#each categories as category (category.id)}
 					<button
 						onclick={() => filterByCategory(category.slug)}
-						class="p-6 bg-white rounded-lg shadow hover:shadow-lg transition text-center border-2 {selectedCategory === category.slug ? 'border-indigo-600' : 'border-transparent'}"
+						class="p-6 bg-white rounded-lg shadow hover:shadow-lg transition text-center border-2 border-transparent hover:border-indigo-600"
 					>
 						{#if category.cover}
 							<img src={category.cover} alt={category.name} class="w-16 h-16 mx-auto mb-2 object-cover rounded-full" />
@@ -94,13 +87,6 @@
 						<span class="font-semibold text-gray-800">{category.name}</span>
 					</button>
 				{/each}
-			</div>
-		{/if}
-		{#if selectedCategory}
-			<div class="mt-4 text-center">
-				<button onclick={clearFilter} class="text-indigo-600 hover:text-indigo-500 font-medium">
-					Clear filter ✕
-				</button>
 			</div>
 		{/if}
 	</div>
