@@ -15,7 +15,6 @@
 	let currentPage = $state(1);
 	let lastPage = $state(1);
 	let totalProducts = $state(0);
-	let isLoading = $state(false);
 
 	function getPageFromURL(): number {
 		const params = new URLSearchParams($page.url.search);
@@ -28,7 +27,7 @@
 	}
 
 	async function loadCategoryData(pageNum: number, categorySlug: string) {
-		isLoading = true;
+		loading = true;
 		currentPage = pageNum;
 		slug = categorySlug;
 		const res = await getCategory(categorySlug, pageNum, 12);
@@ -38,13 +37,13 @@
 			lastPage = res.data.pagination.lastPage;
 			totalProducts = res.data.pagination.total;
 		}
-		isLoading = false;
+		loading = false;
 	}
 
 	$effect(() => {
 		const p = getPageFromURL();
 		const s = getSlugFromURL();
-		if ((p !== currentPage || s !== slug) && !isLoading) {
+		if ((p !== currentPage || s !== slug) && !loading) {
 			loadCategoryData(p, s);
 		}
 	});
