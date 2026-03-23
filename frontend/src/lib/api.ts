@@ -2,6 +2,12 @@ import { PUBLIC_API_URL } from '$env/static/public';
 
 export const API_URL = PUBLIC_API_URL || 'http://localhost:3000';
 
+function getAuthHeader(): Record<string, string> {
+	if (typeof window === 'undefined') return {};
+	const token = localStorage.getItem('accessToken');
+	return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 export async function apiFetch<T>(
 	endpoint: string,
 	options?: RequestInit
@@ -11,6 +17,7 @@ export async function apiFetch<T>(
 			...options,
 			headers: {
 				'Content-Type': 'application/json',
+				...getAuthHeader(),
 				...options?.headers,
 			},
 			credentials: 'include',

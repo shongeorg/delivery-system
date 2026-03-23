@@ -2,28 +2,45 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { getCart, createOrder } from '$lib/api';
-	import type { CartItem } from '$lib/types';
 
-	let items: CartItem[] = [];
+	// Cart item structure from API: { id, cartId, productId, quantity, product }
+	interface CartLineItem {
+		id: string;
+		cartId: string;
+		productId: string;
+		quantity: number;
+		product: {
+			id: string;
+			name: string;
+			slug: string;
+			price: string;
+			cover?: string | null;
+		};
+	}
+
+	let items: CartLineItem[] = $state([]);
 	let address = '';
 	let phone = '';
 	let deliveryType: 'pickup' | 'delivery' = 'delivery';
 	let paymentType: 'card' | 'cash' = 'card';
-	let loading = false;
-	let error = '';
+	let loading = $state(false);
+	let error = $state('');
 
 	onMount(async () => {
 		const res = await getCart();
-		if (res.data && res.data.items.length > 0) {
+		console.log('Checkout cart response:', JSON.stringify(res, null, 2));
+		if (res.data && res.data.items && res.data.items.length > 0) {
 			items = res.data.items;
+			console.log('Items loaded:', items.length);
 		} else {
+			console.error('No items in cart');
 			goto('/cart');
 		}
 	});
 
 	function calculateTotal(): string {
 		return items.reduce((total, item) => {
-			return total + (parseFloat(item.product.price) * item.item.quantity);
+			return total + (parseFloat(item.product.price) * item.quantity);
 		}, 0).toFixed(2);
 	}
 
@@ -39,7 +56,7 @@
 			paymentType,
 			items: items.map(item => ({
 				productId: item.product.id,
-				quantity: item.item.quantity,
+				quantity: item.quantity,
 			})),
 		};
 
@@ -184,19 +201,23 @@
 				<div class="bg-white rounded-lg shadow p-6 h-fit">
 					<h2 class="text-xl font-semibold text-gray-900 mb-4">Order Summary</h2>
 
-					<ul class="divide-y divide-gray-200 mb-6">
-						{#each items as item}
-							<li class="py-3 flex justify-between">
-								<div>
-									<p class="font-medium text-gray-900">{item.product.name}</p>
-									<p class="text-sm text-gray-600">Qty: {item.item.quantity}</p>
-								</div>
-								<p class="font-medium text-gray-900">
-									${(parseFloat(item.product.price) * item.item.quantity).toFixed(2)}
-								</p>
-							</li>
-						{/each}
-					</ul>
+					{#if items.length === 0}
+						<p class="text-gray-600">Loading items...</p>
+					{:else}
+						<ul class="divide-y divide-gray-200 mb-6">
+							{#each items as item (item.id)}
+								<li class="py-3 flex justify-between">
+									<div>
+										<p class="font-medium text-gray-900">{item.product.name}</p>
+										<p class="text-sm text-gray-600">Qty: {item.quantity}</p>
+									</div>
+									<p class="font-medium text-gray-900">
+										${(parseFloat(item.product.price) * item.quantity).toFixed(2)}
+									</p>
+								</li>
+							{/each}
+						</ul>
+					{/if}
 
 					<div class="border-t border-gray-200 pt-4">
 						<div class="flex items-center justify-between text-lg font-bold">

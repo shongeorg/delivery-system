@@ -3,13 +3,16 @@
 	import { getMyOrders } from '$lib/api';
 	import type { Order } from '$lib/types';
 
-	let orders: Order[] = [];
-	let loading = true;
+	let orders: Order[] = $state([]);
+	let loading = $state(true);
 
 	onMount(async () => {
+		console.log('Loading orders...');
 		const res = await getMyOrders();
+		console.log('Orders response:', res);
 		if (res.data) {
 			orders = res.data;
+			console.log('Orders loaded:', orders.length);
 		}
 		loading = false;
 	});

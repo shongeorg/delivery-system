@@ -4,10 +4,10 @@
 	import { login } from '$lib/api';
 	import type { User } from '$lib/types';
 
-	let email = '';
-	let password = '';
-	let error = '';
-	let loading = false;
+	let email = $state('admin@test.com');
+	let password = $state('admin123');
+	let error = $state('');
+	let loading = $state(false);
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
@@ -23,7 +23,7 @@
 		}
 
 		userStore.login(data.user as User);
-		
+
 		// Store tokens in cookies via backend
 		localStorage.setItem('accessToken', data.accessToken);
 		localStorage.setItem('refreshToken', data.refreshToken);

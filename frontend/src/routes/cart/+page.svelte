@@ -5,29 +5,50 @@
 	import { cartStore } from '$lib/stores/cartStore';
 	import type { CartItem } from '$lib/types';
 
-	let items: CartItem[] = [];
-	let loading = true;
-	let updating = false;
+	// Cart item structure from API: { id, cartId, productId, quantity, product }
+	interface CartLineItem {
+		id: string;
+		cartId: string;
+		productId: string;
+		quantity: number;
+		product: {
+			id: string;
+			name: string;
+			slug: string;
+			price: string;
+			cover?: string | null;
+		};
+	}
+
+	let items: CartLineItem[] = $state([]);
+	let loading = $state(true);
+	let updating = $state(false);
 
 	onMount(async () => {
 		await loadCart();
 	});
 
 	async function loadCart() {
+		console.log('Loading cart...');
 		const res = await getCart();
+		console.log('Cart response:', JSON.stringify(res, null, 2));
 		if (res.data) {
-			items = res.data.items || [];
+			items = res.data.items ?? [];
+			console.log('Cart items count:', items.length);
 			cartStore.set(res.data);
+		} else if (res.error) {
+			console.error('Cart error:', res.error);
+			items = [];
 		}
 		loading = false;
 	}
 
 	async function handleUpdateQuantity(itemId: string, quantity: number) {
 		if (quantity < 1) return;
-		
+
 		updating = true;
 		const res = await updateCartItem(itemId, quantity);
-		
+
 		if (res.data) {
 			await loadCart();
 		}
@@ -51,8 +72,9 @@
 	}
 
 	function calculateTotal(): string {
+		if (!items || items.length === 0) return '0.00';
 		return items.reduce((total, item) => {
-			return total + (parseFloat(item.product.price) * item.item.quantity);
+			return total + (parseFloat(item.product.price) * item.quantity);
 		}, 0).toFixed(2);
 	}
 </script>
@@ -69,7 +91,7 @@
 			<div class="text-center py-12">
 				<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
 			</div>
-		{:else if items.length === 0}
+		{:else if !items || items.length === 0}
 			<div class="text-center py-12 bg-white rounded-lg shadow">
 				<span class="text-6xl mb-4 block">🛒</span>
 				<p class="text-gray-600 text-lg mb-6">Your cart is empty</p>
@@ -81,10 +103,10 @@
 			<!-- Cart Items -->
 			<div class="bg-white rounded-lg shadow mb-6">
 				<ul class="divide-y divide-gray-200">
-					{#each items as item}
+					{#each items as item (item.id)}
 						<li class="p-6 flex items-center space-x-4">
 							<!-- Product Image -->
-							{#if item.product.cover}
+							{#if item.product?.cover}
 								<img src={item.product.cover} alt={item.product.name} class="w-20 h-20 object-cover rounded" />
 							{:else}
 								<div class="w-20 h-20 bg-gray-200 flex items-center justify-center rounded">
@@ -94,22 +116,22 @@
 
 							<!-- Product Info -->
 							<div class="flex-1">
-								<h3 class="font-semibold text-gray-900">{item.product.name}</h3>
-								<p class="text-indigo-600 font-bold">${parseFloat(item.product.price).toFixed(2)}</p>
+								<h3 class="font-semibold text-gray-900">{item.product?.name || 'Unknown Product'}</h3>
+								<p class="text-indigo-600 font-bold">${item.product?.price ? parseFloat(item.product.price).toFixed(2) : '0.00'}</p>
 							</div>
 
 							<!-- Quantity Controls -->
 							<div class="flex items-center space-x-2">
 								<button
-									on:click={() => handleUpdateQuantity(item.item.id, item.item.quantity - 1)}
-									disabled={updating || item.item.quantity <= 1}
+									on:click={() => handleUpdateQuantity(item.id, (item.quantity || 1) - 1)}
+									disabled={updating || (item.quantity || 1) <= 1}
 									class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 flex items-center justify-center"
 								>
 									−
 								</button>
-								<span class="w-12 text-center font-medium">{item.item.quantity}</span>
+								<span class="w-12 text-center font-medium">{item.quantity || 1}</span>
 								<button
-									on:click={() => handleUpdateQuantity(item.item.id, item.item.quantity + 1)}
+									on:click={() => handleUpdateQuantity(item.id, (item.quantity || 1) + 1)}
 									disabled={updating}
 									class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 flex items-center justify-center"
 								>
@@ -120,13 +142,13 @@
 							<!-- Subtotal -->
 							<div class="text-right min-w-[100px]">
 								<p class="font-bold text-gray-900">
-									${(parseFloat(item.product.price) * item.item.quantity).toFixed(2)}
+									${item.product?.price ? (parseFloat(item.product.price) * (item.quantity || 1)).toFixed(2) : '0.00'}
 								</p>
 							</div>
 
 							<!-- Remove Button -->
 							<button
-								on:click={() => handleRemove(item.item.id)}
+								on:click={() => handleRemove(item.id)}
 								disabled={updating}
 								class="text-red-600 hover:text-red-500 disabled:opacity-50"
 							>

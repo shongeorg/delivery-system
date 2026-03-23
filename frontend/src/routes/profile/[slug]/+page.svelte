@@ -5,18 +5,20 @@
 	import { userStore } from '$lib/stores/userStore';
 	import type { User } from '$lib/types';
 
-	let user: User | null = null;
-	let name = '';
-	let email = '';
-	let phone = '';
-	let address = '';
-	let loading = true;
-	let updating = false;
-	let error = '';
-	let success = '';
+	let user: User | null = $state(null);
+	let name = $state('');
+	let email = $state('');
+	let phone = $state('');
+	let address = $state('');
+	let loading = $state(true);
+	let updating = $state(false);
+	let error = $state('');
+	let success = $state('');
 
 	onMount(async () => {
+		console.log('Loading profile...');
 		const res = await getCurrentUser();
+		console.log('Profile response:', res);
 		if (res.data) {
 			user = res.data;
 			name = user.name;
@@ -118,7 +120,6 @@
 								id="phone"
 								name="phone"
 								type="tel"
-								value={phone}
 								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
 								placeholder="+1 (555) 123-4567"
 								bind:value={phone}
@@ -133,7 +134,6 @@
 								id="address"
 								name="address"
 								rows="3"
-								value={address}
 								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
 								placeholder="Your delivery address"
 								bind:value={address}
