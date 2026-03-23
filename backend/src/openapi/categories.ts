@@ -39,15 +39,13 @@ categoriesOpenAPI.openapi(getCategoriesRoute, async (c) => {
   return c.json(allCategories);
 });
 
-// Get category by slug with pagination - supports both path param and query param
+// Get category by slug with pagination - slug as query param for UI compatibility
 const getCategoryRoute = createRoute({
   method: 'get',
-  path: '/:slug',
+  path: '/get',
   request: {
-    params: z.object({
-      slug: z.string(),
-    }),
     query: z.object({
+      slug: z.string(),
       page: z.string().optional().default('1'),
       limit: z.string().optional().default('25'),
     }),
@@ -78,10 +76,14 @@ const getCategoryRoute = createRoute({
 });
 
 categoriesOpenAPI.openapi(getCategoryRoute, async (c) => {
-  const slug = c.req.param('slug');
+  const slug = c.req.query('slug');
   const page = parseInt(c.req.query('page') || '1');
   const limit = parseInt(c.req.query('limit') || '25');
   const offset = (page - 1) * limit;
+
+  if (!slug) {
+    return c.json({ error: 'Slug query parameter required', code: 400 }, 400);
+  }
 
   const category = await db.query.categories.findFirst({
     where: eq(categories.slug, slug),
