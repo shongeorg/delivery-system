@@ -3,37 +3,54 @@
 	import { getProducts, getCategories, addToCart } from '$lib/api';
 	import type { Product, Category } from '$lib/types';
 	import { cartStore } from '$lib/stores/cartStore';
+	import Pagination from '$lib/components/Pagination.svelte';
 
 	let products: Product[] = $state([]);
 	let categories: Category[] = $state([]);
 	let loading = $state(true);
 	let selectedCategory = $state('');
+	
+	// Pagination
+	let currentPage = $state(1);
+	let lastPage = $state(1);
+	let totalProducts = $state(0);
+	let productsLoading = $state(false);
 
 	onMount(async () => {
-		const [productsRes, categoriesRes] = await Promise.all([
-			getProducts(),
-			getCategories()
-		]);
-
-		if (productsRes.data) products = productsRes.data;
+		const categoriesRes = await getCategories();
 		if (categoriesRes.data) categories = categoriesRes.data;
-		
 		loading = false;
+		
+		await loadProducts();
 	});
+
+	async function loadProducts() {
+		productsLoading = true;
+		const productsRes = await getProducts(currentPage, 12);
+		if (productsRes.data) {
+			products = productsRes.data.products;
+			lastPage = productsRes.data.pagination.lastPage;
+			totalProducts = productsRes.data.pagination.total;
+		}
+		productsLoading = false;
+	}
+
+	function handlePageChange(page: number) {
+		currentPage = page;
+		loadProducts();
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
 
 	function filterByCategory(categorySlug: string) {
 		selectedCategory = categorySlug;
+		currentPage = 1;
+		loadProducts();
 	}
 
 	function clearFilter() {
 		selectedCategory = '';
-	}
-
-	function getFilteredProducts() {
-		if (!selectedCategory) return products;
-		return products.filter(p => 
-			p.categories?.some(c => c.slug === selectedCategory)
-		);
+		currentPage = 1;
+		loadProducts();
 	}
 
 	async function handleAddToCart(product: Product) {
@@ -90,20 +107,23 @@
 
 	<!-- Products Catalog -->
 	<div id="catalog" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-		<h2 class="text-3xl font-bold text-gray-900 mb-8">Our Menu</h2>
-		
-		{#if loading}
+		<div class="flex items-center justify-between mb-8">
+			<h2 class="text-3xl font-bold text-gray-900">Our Menu</h2>
+			<p class="text-gray-600">{totalProducts} products</p>
+		</div>
+
+		{#if productsLoading}
 			<div class="text-center py-12">
 				<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
 				<p class="mt-4 text-gray-600">Loading delicious food...</p>
 			</div>
-		{:else if getFilteredProducts().length === 0}
+		{:else if products.length === 0}
 			<div class="text-center py-12">
-				<p class="text-gray-600">No products found in this category</p>
+				<p class="text-gray-600">No products found</p>
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-				{#each getFilteredProducts() as product (product.id)}
+				{#each products as product (product.id)}
 					<div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
 						{#if product.cover}
 							<img src={product.cover} alt={product.name} class="w-full h-48 object-cover" />
@@ -119,7 +139,7 @@
 								<span class="text-xl font-bold text-indigo-600">${parseFloat(product.price).toFixed(2)}</span>
 							</div>
 							<div class="flex gap-2">
-								<button 
+								<button
 									onclick={() => handleAddToCart(product)}
 									class="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition text-sm font-medium"
 								>
@@ -133,6 +153,12 @@
 					</div>
 				{/each}
 			</div>
+			
+			<Pagination
+				currentPage={currentPage}
+				lastPage={lastPage}
+				onPageChange={handlePageChange}
+			/>
 		{/if}
 	</div>
 </div>

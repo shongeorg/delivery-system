@@ -71,8 +71,8 @@ export async function logout() {
 }
 
 // Products
-export async function getProducts() {
-	return apiFetch<any[]>('/products');
+export async function getProducts(page = 1, limit = 25) {
+	return apiFetch<{ products: any[]; pagination: any }>(`/products?page=${page}&limit=${limit}`);
 }
 
 export async function getProduct(slug: string) {
@@ -84,8 +84,8 @@ export async function getCategories() {
 	return apiFetch<any[]>('/categories');
 }
 
-export async function getCategory(slug: string) {
-	return apiFetch<any>(`/categories/${slug}`);
+export async function getCategory(slug: string, page = 1, limit = 25) {
+	return apiFetch<any>(`/categories/${slug}?page=${page}&limit=${limit}`);
 }
 
 // Cart
