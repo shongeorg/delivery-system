@@ -1,5 +1,5 @@
 import { db } from './index.js';
-import { users, categories, products, tags, ingredients, inventory } from './schema.js';
+import { users, categories, products, tags, ingredients, inventory, productCategories, productTags } from './schema.js';
 import { hashPassword } from '../utils/auth.js';
 import { generateSlug } from '../utils/slug.js';
 
@@ -175,6 +175,25 @@ async function seed() {
 
     if (product) {
       console.log('✅ Product created:', product.name);
+
+      // Add category association
+      await db.insert(productCategories).values({
+        productId: product.id,
+        categoryId: category.id,
+      });
+
+      // Add tags associations
+      if (prod.tags && prod.tags.length > 0) {
+        for (const tagName of prod.tags) {
+          const tag = createdTags.find(t => t.name === tagName);
+          if (tag) {
+            await db.insert(productTags).values({
+              productId: product.id,
+              tagId: tag.id,
+            });
+          }
+        }
+      }
 
       // Add ingredients
       for (const ing of prod.ingredients) {
