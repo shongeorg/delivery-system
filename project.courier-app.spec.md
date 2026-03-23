@@ -155,3 +155,14 @@ pwa: {
 - Мінімалістичний інтерфейс: великі кнопки, контрастні кольори (зручно використовувати на ходу).
 
 ---
+
+📦 Courier 1:
+Email: cura1@mail.com
+Password: cura123
+Role: courier
+ID: 6201f8f6-8c0a-4fa4-8a8a-56dd4da278df
+📦 Courier 2:
+Email: cura2@mail.com
+Password: cura123
+Role: courier
+ID: bb5574c0-16e5-4eb7-95cc-df29b3e22af2

@@ -27,7 +27,13 @@ const app = new Hono();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3031', 'http://localhost:3000'],
+  origin: [
+    'http://localhost:3000',  // Backend
+    'http://localhost:3031',  // Frontend (SvelteKit)
+    'http://localhost:3032',  // Courier App (Vue PWA)
+    'http://localhost:3033',  // Chef Panel (React)
+    'http://localhost:3034',  // Owner Panel (Angular)
+  ],
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],

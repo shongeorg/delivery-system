@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(npm run:*)",
+      "Bash(curl -s http://localhost:3032)",
+      "Bash(curl:*)"
+    ]
+  }
+}
