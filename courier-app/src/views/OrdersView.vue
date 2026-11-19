@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useOrderStore } from '../stores/order'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
@@ -9,34 +9,55 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 const loading = ref(true)
+const refreshing = ref(false)
+const error = ref('')
+let refreshTimer = null
 
-const availableOrders = computed(() => {
-  return orderStore.orders.filter(o =>
-    ['ready'].includes(o.status)
-  )
-})
+const deliveryOrders = computed(() =>
+  orderStore.orders.filter(o => o.deliveryType === 'delivery')
+)
 
-const activeOrders = computed(() => {
-  return orderStore.orders.filter(o =>
-    ['on_the_way'].includes(o.status)
-  )
-})
+const availableOrders = computed(() =>
+  deliveryOrders.value.filter(o => o.status === 'ready')
+)
 
-const completedOrders = computed(() => {
-  return orderStore.orders.filter(o =>
-    ['delivered'].includes(o.status)
-  )
-})
+const activeOrders = computed(() =>
+  deliveryOrders.value.filter(o => o.status === 'on_the_way')
+)
 
-onMounted(async () => {
+const completedOrders = computed(() =>
+  deliveryOrders.value.filter(o => o.status === 'delivered')
+)
+
+async function loadOrders() {
+  refreshing.value = true
+  error.value = ''
   try {
     await orderStore.fetchOrders()
   } catch (err) {
+    error.value = 'Failed to load orders'
     console.error('Failed to load orders:', err)
   } finally {
+    refreshing.value = false
     loading.value = false
   }
+}
+
+onMounted(async () => {
+  await loadOrders()
+  refreshTimer = setInterval(loadOrders, 15000)
 })
+
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
+})
+
+function itemSummary(order) {
+  if (!order.items || order.items.length === 0) return ''
+  return order.items
+    .map(item => `${item.quantity}× ${item.product?.name || 'Item'}`)
+    .join(', ')
+}
 
 function navigateToOrder(id) {
   router.push(`/orders/${id}`)
@@ -61,13 +82,24 @@ function navigateToOrder(id) {
     <!-- Content -->
     <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
       <!-- Status toggle -->
-      <div class="flex gap-2">
+      <div class="flex items-center justify-between gap-2">
         <span
           :class="!loading ? 'bg-blue-600 text-white' : 'bg-gray-300'"
           class="px-3 py-1 rounded-full text-sm font-medium"
         >
-          Online
+          {{ refreshing ? 'Refreshing...' : 'Online' }}
         </span>
+        <button
+          @click="loadOrders"
+          :disabled="refreshing"
+          class="text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div v-if="error" class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+        {{ error }}
       </div>
 
       <!-- Active Orders -->
@@ -99,6 +131,10 @@ function navigateToOrder(id) {
             </div>
             <p class="text-sm text-gray-600">
               {{ order.deliveryType }} • {{ order.address || 'Pickup' }}
+            </p>
+            <p v-if="order.phone" class="text-sm text-gray-600">📞 {{ order.phone }}</p>
+            <p v-if="itemSummary(order)" class="text-sm text-gray-600 mt-1">
+              {{ itemSummary(order) }}
             </p>
             <p class="text-sm font-medium text-gray-800 mt-1">
               ${{ order.totalPrice }}
@@ -135,6 +171,10 @@ function navigateToOrder(id) {
             <p class="text-sm text-gray-600">
               {{ order.deliveryType }} • {{ order.address || 'Pickup' }}
             </p>
+            <p v-if="order.phone" class="text-sm text-gray-600">📞 {{ order.phone }}</p>
+            <p v-if="itemSummary(order)" class="text-sm text-gray-600 mt-1">
+              {{ itemSummary(order) }}
+            </p>
             <p class="text-sm font-medium text-gray-800 mt-1">
               ${{ order.totalPrice }}
             </p>
@@ -165,6 +205,10 @@ function navigateToOrder(id) {
             <p class="text-sm text-gray-600">
               {{ order.deliveryType }} • {{ order.address || 'Pickup' }}
             </p>
+            <p v-if="order.phone" class="text-sm text-gray-600">📞 {{ order.phone }}</p>
+            <p v-if="itemSummary(order)" class="text-sm text-gray-600 mt-1">
+              {{ itemSummary(order) }}
+            </p>
             <p class="text-sm font-medium text-gray-800 mt-1">
               ${{ order.totalPrice }}
             </p>
@@ -173,8 +217,8 @@ function navigateToOrder(id) {
       </section>
 
       <!-- Empty state -->
-      <div v-if="!loading && orderStore.orders.length === 0" class="text-center py-12">
-        <p class="text-gray-500">No orders available</p>
+      <div v-if="!loading && deliveryOrders.length === 0" class="text-center py-12">
+        <p class="text-gray-500">No delivery orders available</p>
       </div>
 
       <!-- Loading state -->

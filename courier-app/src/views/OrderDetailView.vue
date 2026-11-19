@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useOrderStore } from '../stores/order'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -11,8 +11,9 @@ const order = ref(null)
 const loading = ref(true)
 const error = ref('')
 const updating = ref(false)
+let refreshTimer = null
 
-onMounted(async () => {
+async function loadOrder() {
   try {
     await orderStore.fetchOrderById(route.params.id)
     order.value = orderStore.currentOrder
@@ -22,10 +23,20 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(async () => {
+  await loadOrder()
+  refreshTimer = setInterval(loadOrder, 15000)
+})
+
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
 })
 
 async function updateStatus(newStatus) {
   updating.value = true
+  error.value = ''
   try {
     await orderStore.updateStatus(order.value.id, newStatus)
     order.value = orderStore.currentOrder
@@ -40,17 +51,11 @@ async function updateStatus(newStatus) {
 function getStatusButtons() {
   if (!order.value) return []
 
-  const status = order.value.status
-
-  // Courier can accept orders that are ready or cooking
-  if (status === 'created' || status === 'paid' || status === 'cooking' || status === 'ready') {
-    return [{ label: 'Accept Order', status: 'on_the_way', class: 'bg-blue-600' }]
+  if (order.value.status === 'ready') {
+    return [{ label: 'Accept & Pick Up', status: 'on_the_way', class: 'bg-blue-600' }]
   }
-  if (status === 'on_the_way') {
+  if (order.value.status === 'on_the_way') {
     return [{ label: 'Mark Delivered', status: 'delivered', class: 'bg-green-600' }]
-  }
-  if (status === 'delivered') {
-    return []
   }
 
   return []
@@ -118,7 +123,8 @@ function getStatusButtons() {
               <span class="font-medium">Address:</span> {{ order.address }}
             </p>
             <p v-if="order.phone" class="text-gray-600">
-              <span class="font-medium">Phone:</span> {{ order.phone }}
+              <span class="font-medium">Phone:</span>
+              <a :href="`tel:${order.phone}`" class="text-blue-600">{{ order.phone }}</a>
             </p>
             <p class="text-gray-600">
               <span class="font-medium">Payment:</span> {{ order.paymentType }} ({{ order.paymentStatus }})
@@ -139,7 +145,7 @@ function getStatusButtons() {
                 <span class="font-medium">x{{ item.quantity }}</span>
                 <span class="ml-2">{{ item.product?.name || 'Product' }}</span>
               </div>
-              <span class="font-medium">${{ parseFloat(item.price) * item.quantity }}</span>
+              <span class="font-medium">${{ (parseFloat(item.price) * item.quantity).toFixed(2) }}</span>
             </div>
           </div>
           <div v-else class="text-gray-500 text-sm">
@@ -165,8 +171,14 @@ function getStatusButtons() {
             :class="btn.class"
             class="w-full text-white py-4 rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 transition"
           >
-            {{ btn.label }}
+            {{ updating ? 'Updating...' : btn.label }}
           </button>
+          <p
+            v-if="getStatusButtons().length === 0 && order.status !== 'delivered' && order.status !== 'cancelled'"
+            class="text-center text-sm text-gray-500 py-3"
+          >
+            Waiting for the kitchen to mark this order ready
+          </p>
         </div>
       </div>
     </main>

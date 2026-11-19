@@ -31,14 +31,17 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function refresh() {
-    if (!refreshToken.value) return false
+    const storedRefresh = refreshToken.value || localStorage.getItem('refreshToken')
+    if (!storedRefresh) return false
 
     try {
       const res = await axios.post(`${API_URL}/auth/refresh`, {
-        refreshToken: refreshToken.value
+        refreshToken: storedRefresh
       })
       accessToken.value = res.data.accessToken
+      refreshToken.value = res.data.refreshToken
       localStorage.setItem('accessToken', accessToken.value)
+      localStorage.setItem('refreshToken', refreshToken.value)
       return true
     } catch {
       logout()

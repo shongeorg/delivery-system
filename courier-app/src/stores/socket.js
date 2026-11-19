@@ -50,36 +50,24 @@ export const useSocketStore = defineStore('socket', () => {
     }
   }
 
-  function handleSocketMessage(data) {
+  function handleSocketMessage(message) {
     const orderStore = useOrderStore()
 
-    switch (data.event) {
+    switch (message.type) {
       case 'order_updated':
-        // Refresh orders when status changes
-        orderStore.fetchOrderById(data.orderId)
-        orderStore.fetchOrders()
-        console.log('Order updated:', data)
-        break
-
       case 'new_order':
-        // New order notification
-        console.log('New order available:', data)
-        orderStore.fetchOrders()
-        break
-
       case 'order_cancelled':
-        // Remove cancelled order
-        orderStore.fetchOrders()
-        console.log('Order cancelled:', data)
+        orderStore.fetchOrders().catch(() => {})
+        if (message.type === 'order_updated' && message.data?.id) {
+          orderStore.fetchOrderById(message.data.id).catch(() => {})
+        }
         break
 
       case 'new_message':
-        // New chat message
-        console.log('New message:', data)
         break
 
       default:
-        console.log('Unknown event:', data)
+        break
     }
   }
 
