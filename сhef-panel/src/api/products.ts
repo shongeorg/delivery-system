@@ -35,8 +35,8 @@ export interface Tag {
 }
 
 export const productsApi = {
-  getAll: async () => {
-    const response = await api.get('/products');
+  getAll: async (limit = 200) => {
+    const response = await api.get('/products', { params: { limit } });
     return response.data;
   },
 

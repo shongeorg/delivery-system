@@ -152,6 +152,21 @@ export function OrdersPage() {
                   <div className="text-sm text-gray-600">
                     {new Date(order.createdAt).toLocaleString()}
                   </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {order.deliveryType === 'delivery' ? 'Delivery' : 'Pickup'} ·{' '}
+                    <span className="capitalize">{order.paymentType}</span>{' '}
+                    <span
+                      className={
+                        order.paymentStatus === 'paid'
+                          ? 'text-green-600'
+                          : order.paymentStatus === 'failed'
+                            ? 'text-red-600'
+                            : 'text-yellow-600'
+                      }
+                    >
+                      ({order.paymentStatus})
+                    </span>
+                  </div>
                 </div>
 
                 {/* Customer Info */}
@@ -159,8 +174,10 @@ export function OrdersPage() {
                   <div className="mb-4 pb-4 border-b">
                     <div className="text-sm font-medium text-gray-700 mb-1">Customer</div>
                     <div className="text-sm text-gray-600">{order.user.name}</div>
-                    {order.user.phone && (
-                      <div className="text-sm text-gray-600">{order.user.phone}</div>
+                    {(order.user.phone || order.phone) && (
+                      <div className="text-sm text-gray-600">
+                        {order.user.phone || order.phone}
+                      </div>
                     )}
                   </div>
                 )}
@@ -192,7 +209,13 @@ export function OrdersPage() {
 
                 {/* Action Buttons */}
                 <div className="space-y-2">
-                  {order.status === 'created' && (
+                  {order.status === 'created' && order.paymentType === 'card' && order.paymentStatus !== 'paid' && (
+                    <div className="text-center py-3 bg-yellow-50 border-2 border-yellow-200 rounded-lg text-yellow-800 text-sm font-medium">
+                      Awaiting card payment
+                    </div>
+                  )}
+
+                  {order.status === 'created' && (order.paymentType !== 'card' || order.paymentStatus === 'paid') && (
                     <button
                       onClick={() => handleStartCooking(order.id)}
                       disabled={updateStatusMutation.isPending}
