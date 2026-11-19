@@ -4,9 +4,26 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { carts, cartItems, products } from '../db/schema.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 const cartRouter = new Hono();
+
+async function getOrCreateCart(userId: string) {
+  const existing = await db.query.carts.findFirst({
+    where: eq(carts.userId, userId),
+  });
+
+  if (existing) return existing;
+
+  try {
+    const [created] = await db.insert(carts).values({ userId }).returning();
+    return created;
+  } catch {
+    return db.query.carts.findFirst({
+      where: eq(carts.userId, userId),
+    });
+  }
+}
 
 const addToCartSchema = z.object({
   productId: z.string(),
@@ -63,17 +80,15 @@ cartRouter.post('/items', authMiddleware, zValidator('json', addToCartSchema), a
   }
 
   // Get or create cart
-  let cart = await db.query.carts.findFirst({
-    where: eq(carts.userId, userId),
-  });
+  const cart = await getOrCreateCart(userId);
 
   if (!cart) {
-    [cart] = await db.insert(carts).values({ userId }).returning();
+    return c.json({ error: 'Cart unavailable', code: 500 }, 500);
   }
 
-  // Check if item already in cart
+  // Check if item already in this cart
   const existingItem = await db.query.cartItems.findFirst({
-    where: eq(cartItems.productId, productId),
+    where: and(eq(cartItems.cartId, cart.id), eq(cartItems.productId, productId)),
   });
 
   if (existingItem) {
@@ -101,11 +116,20 @@ cartRouter.post('/items', authMiddleware, zValidator('json', addToCartSchema), a
 // Update cart item quantity
 cartRouter.patch('/items/:id', authMiddleware, zValidator('json', updateCartItemSchema), async (c) => {
   const itemId = c.req.param('id')!;
+  const userId = c.get('userId');
   const { quantity } = c.req.valid('json');
+
+  const cart = await db.query.carts.findFirst({
+    where: eq(carts.userId, userId),
+  });
+
+  if (!cart) {
+    return c.json({ error: 'Cart item not found', code: 404 }, 404);
+  }
 
   const [item] = await db.update(cartItems)
     .set({ quantity })
-    .where(eq(cartItems.id, itemId))
+    .where(and(eq(cartItems.id, itemId), eq(cartItems.cartId, cart.id)))
     .returning();
 
   if (!item) {
@@ -118,8 +142,17 @@ cartRouter.patch('/items/:id', authMiddleware, zValidator('json', updateCartItem
 // Remove item from cart
 cartRouter.delete('/items/:id', authMiddleware, async (c) => {
   const itemId = c.req.param('id')!;
+  const userId = c.get('userId');
 
-  await db.delete(cartItems).where(eq(cartItems.id, itemId));
+  const cart = await db.query.carts.findFirst({
+    where: eq(carts.userId, userId),
+  });
+
+  if (!cart) {
+    return c.json({ error: 'Cart item not found', code: 404 }, 404);
+  }
+
+  await db.delete(cartItems).where(and(eq(cartItems.id, itemId), eq(cartItems.cartId, cart.id)));
 
   return c.json({ success: true });
 });

@@ -44,6 +44,7 @@ paymentsRouter.post('/create-intent', authMiddleware, zValidator('json', createP
   const paymentIntent = await stripe.paymentIntents.create({
     amount,
     currency: 'usd',
+    payment_method_types: ['card'],
     metadata: {
       orderId: order.id,
       userId: order.userId,
@@ -54,6 +55,51 @@ paymentsRouter.post('/create-intent', authMiddleware, zValidator('json', createP
     clientSecret: paymentIntent.client_secret,
     paymentIntentId: paymentIntent.id,
   });
+});
+
+// Confirm payment after client-side Stripe confirmation
+const confirmPaymentSchema = z.object({
+  orderId: z.string(),
+  paymentIntentId: z.string(),
+});
+
+paymentsRouter.post('/confirm', authMiddleware, zValidator('json', confirmPaymentSchema), async (c) => {
+  const userId = c.get('userId');
+  const { orderId, paymentIntentId } = c.req.valid('json');
+
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.id, orderId),
+  });
+
+  if (!order) {
+    return c.json({ error: 'Order not found', code: 404 }, 404);
+  }
+
+  if (order.userId !== userId) {
+    return c.json({ error: 'Forbidden', code: 403 }, 403);
+  }
+
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+  if (paymentIntent.metadata.orderId !== orderId) {
+    return c.json({ error: 'Payment does not match order', code: 400 }, 400);
+  }
+
+  if (paymentIntent.status !== 'succeeded') {
+    return c.json({ error: 'Payment not completed', code: 400 }, 400);
+  }
+
+  const [updated] = await db.update(orders)
+    .set({
+      paymentStatus: 'paid',
+      status: 'paid',
+    })
+    .where(eq(orders.id, orderId))
+    .returning();
+
+  broadcastToUser(order.userId!, 'order_updated', updated);
+
+  return c.json({ success: true, order: updated });
 });
 
 // Webhook for Stripe events

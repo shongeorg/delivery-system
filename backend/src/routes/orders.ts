@@ -2,11 +2,48 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { orders, orderItems, products, carts, cartItems } from '../db/schema.js';
+import { orders, orderItems, products, carts, cartItems, users } from '../db/schema.js';
 import { authMiddleware, allowRoles } from '../middleware/auth.js';
+import { broadcast } from '../websocket.js';
 import { eq, inArray } from 'drizzle-orm';
 
 const ordersRouter = new Hono();
+
+async function enrichOrders(orderList: (typeof orders.$inferSelect)[]) {
+  if (orderList.length === 0) return [];
+
+  const orderIds = orderList.map(order => order.id);
+  const userIds = [...new Set(orderList.map(order => order.userId).filter((id): id is string => Boolean(id)))];
+
+  const itemRows = await db
+    .select({
+      item: orderItems,
+      product: products,
+    })
+    .from(orderItems)
+    .innerJoin(products, eq(orderItems.productId, products.id))
+    .where(inArray(orderItems.orderId, orderIds));
+
+  const userRows = userIds.length > 0
+    ? await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          phone: users.phone,
+        })
+        .from(users)
+        .where(inArray(users.id, userIds))
+    : [];
+
+  return orderList.map(order => ({
+    ...order,
+    items: itemRows
+      .filter(row => row.item.orderId === order.id)
+      .map(row => ({ ...row.item, product: row.product })),
+    user: userRows.find(user => user.id === order.userId) ?? null,
+  }));
+}
 
 const orderStatus = ['created', 'paid', 'cooking', 'ready', 'on_the_way', 'delivered', 'cancelled'] as const;
 const deliveryType = ['pickup', 'delivery'] as const;
@@ -30,21 +67,29 @@ const updateOrderStatusSchema = z.object({
 
 // Get all orders (admin/owner/chef/courier)
 ordersRouter.get('/', authMiddleware, allowRoles(['owner', 'admin', 'chef', 'courier']), async (c) => {
-  const allOrders = await db.query.orders.findMany({
-    orderBy: (orders, { desc }) => [desc(orders.createdAt)],
-  });
-  return c.json(allOrders);
+  const status = c.req.query('status');
+  const allOrders = status
+    ? await db.query.orders.findMany({
+        where: eq(orders.status, status),
+        orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+      })
+    : await db.query.orders.findMany({
+        orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+      });
+
+  return c.json(await enrichOrders(allOrders));
 });
 
 // Get my orders
 ordersRouter.get('/my', authMiddleware, async (c) => {
   const userId = c.get('userId');
-  
+
   const myOrders = await db.query.orders.findMany({
     where: eq(orders.userId, userId),
     orderBy: (orders, { desc }) => [desc(orders.createdAt)],
   });
-  return c.json(myOrders);
+
+  return c.json(await enrichOrders(myOrders));
 });
 
 // Get order by id
@@ -141,6 +186,8 @@ ordersRouter.post('/', authMiddleware, zValidator('json', createOrderSchema), as
     await db.delete(cartItems).where(eq(cartItems.cartId, cart.id));
   }
 
+  broadcast('new_order', order);
+
   return c.json(order, 201);
 });
 
@@ -157,6 +204,8 @@ ordersRouter.patch('/:id/status', authMiddleware, allowRoles(['owner', 'admin', 
   if (!order) {
     return c.json({ error: 'Order not found', code: 404 }, 404);
   }
+
+  broadcast('order_updated', order);
 
   return c.json(order);
 });
@@ -189,6 +238,8 @@ ordersRouter.post('/:id/cancel', authMiddleware, async (c) => {
     .set({ status: 'cancelled' })
     .where(eq(orders.id, id))
     .returning();
+
+  broadcast('order_cancelled', updated);
 
   return c.json(updated);
 });
