@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import Header from '$lib/components/Header.svelte';
 	import Footer from '$lib/components/Footer.svelte';
+	import Toast from '$lib/components/Toast.svelte';
 
 	let { children } = $props();
 </script>
@@ -15,4 +16,5 @@
 		{@render children()}
 	</main>
 	<Footer />
+	<Toast />
 </div>

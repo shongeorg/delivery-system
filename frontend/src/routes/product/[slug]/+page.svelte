@@ -2,6 +2,8 @@
 	import type { PageData } from './$types';
 	import { addToCart } from '$lib/api';
 	import type { Product } from '$lib/types';
+	import { refreshCartCount } from '$lib/stores/cartCount';
+	import { showToast } from '$lib/stores/toast';
 
 	let { data }: { data: PageData } = $props();
 	
@@ -11,15 +13,22 @@
 
 	async function handleAddToCart() {
 		if (!data.product) return;
-		
+
 		addingToCart = true;
+		error = '';
+
 		try {
 			const res = await addToCart(data.product.id, quantity);
 			if (res.error) {
 				error = res.error;
+				showToast(res.error, 'error');
+			} else {
+				showToast(`${quantity} × ${data.product.name} added to cart`);
+				refreshCartCount();
 			}
 		} catch (e) {
 			error = 'Failed to add to cart';
+			showToast('Failed to add to cart', 'error');
 		}
 		addingToCart = false;
 	}

@@ -1,19 +1,25 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import { getMyOrders } from '$lib/api';
 	import type { Order } from '$lib/types';
 
 	let orders: Order[] = $state([]);
 	let loading = $state(true);
+	let error = $state('');
+
+	const orderParam = $page.url.searchParams.get('order');
+	const showSuccess = $page.url.searchParams.get('success') === '1';
 
 	onMount(async () => {
-		console.log('Loading orders...');
 		const res = await getMyOrders();
-		console.log('Orders response:', res);
-		if (res.data) {
+
+		if (res.error) {
+			error = res.error;
+		} else if (res.data) {
 			orders = res.data;
-			console.log('Orders loaded:', orders.length);
 		}
+
 		loading = false;
 	});
 
@@ -28,6 +34,19 @@
 			case 'cancelled': return 'bg-red-100 text-red-800';
 			default: return 'bg-gray-100 text-gray-800';
 		}
+	}
+
+	function getPaymentColor(status: string): string {
+		switch (status) {
+			case 'paid': return 'text-green-600';
+			case 'failed': return 'text-red-600';
+			case 'refunded': return 'text-gray-600';
+			default: return 'text-yellow-600';
+		}
+	}
+
+	function formatStatus(status: string): string {
+		return status.replace(/_/g, ' ').toUpperCase();
 	}
 
 	function formatDate(dateString: string): string {
@@ -49,56 +68,93 @@
 	<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 		<h1 class="text-3xl font-bold text-gray-900 mb-8">My Orders</h1>
 
+		{#if showSuccess && !loading}
+			<div class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+				Order placed successfully{orderParam ? ` (#${orderParam.slice(0, 8)})` : ''}. We will start
+				preparing it shortly.
+			</div>
+		{/if}
+
 		{#if loading}
 			<div class="text-center py-12">
 				<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+			</div>
+		{:else if error}
+			<div class="text-center py-12 bg-white rounded-lg shadow">
+				<span class="text-6xl mb-4 block">🔒</span>
+				<p class="text-gray-700 text-lg mb-6">{error}</p>
+				<a
+					href="/login"
+					class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+				>
+					Sign in
+				</a>
 			</div>
 		{:else if orders.length === 0}
 			<div class="text-center py-12 bg-white rounded-lg shadow">
 				<span class="text-6xl mb-4 block">📦</span>
 				<p class="text-gray-600 text-lg mb-6">You haven't placed any orders yet</p>
-				<a href="/catalog" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
+				<a
+					href="/catalog"
+					class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+				>
 					Start Shopping
 				</a>
 			</div>
 		{:else}
 			<div class="space-y-4">
-				{#each orders as order}
+				{#each orders as order (order.id)}
 					<div class="bg-white rounded-lg shadow p-6">
-						<div class="flex items-center justify-between mb-4">
+						<div class="flex items-start justify-between gap-4 mb-4">
 							<div>
-								<h3 class="text-lg font-semibold text-gray-900">Order #{order.id.slice(0, 8)}</h3>
+								<h3 class="text-lg font-semibold text-gray-900">
+									Order #{order.id.slice(0, 8)}
+								</h3>
 								<p class="text-sm text-gray-600">{formatDate(order.createdAt)}</p>
 							</div>
 							<span class="px-3 py-1 rounded-full text-sm font-medium {getStatusColor(order.status)}">
-								{order.status.replace('_', ' ').toUpperCase()}
+								{formatStatus(order.status)}
 							</span>
 						</div>
 
-						<!-- Order Items -->
-						{#if order.items}
+						{#if order.items && order.items.length > 0}
 							<ul class="divide-y divide-gray-200 mb-4">
-								{#each order.items as item}
-									<li class="py-2 flex justify-between">
+								{#each order.items as item (item.id)}
+									<li class="py-2 flex justify-between gap-4">
 										<div>
 											<p class="text-gray-900">{item.product?.name || 'Product'}</p>
 											<p class="text-sm text-gray-600">Qty: {item.quantity}</p>
 										</div>
-										<p class="text-gray-900">${(parseFloat(item.price) * item.quantity).toFixed(2)}</p>
+										<p class="text-gray-900 whitespace-nowrap">
+											${(parseFloat(item.price) * item.quantity).toFixed(2)}
+										</p>
 									</li>
 								{/each}
 							</ul>
 						{/if}
 
-						<!-- Order Footer -->
-						<div class="flex items-center justify-between pt-4 border-t border-gray-200">
-							<div>
-								<p class="text-sm text-gray-600">Delivery: <span class="font-medium">{order.deliveryType}</span></p>
-								<p class="text-sm text-gray-600">Payment: <span class="font-medium">{order.paymentType}</span></p>
+						<div class="flex flex-wrap items-end justify-between gap-4 pt-4 border-t border-gray-200">
+							<div class="space-y-1">
+								<p class="text-sm text-gray-600">
+									{order.deliveryType === 'delivery' ? 'Delivery' : 'Pickup'}
+									{#if order.address}
+										<span class="font-medium">· {order.address}</span>
+									{/if}
+								</p>
+								<p class="text-sm text-gray-600">
+									Phone: <span class="font-medium">{order.phone}</span>
+								</p>
+								<p class="text-sm text-gray-600">
+									Payment: <span class="font-medium capitalize">{order.paymentType}</span>
+									<span class="ml-2 font-medium {getPaymentColor(order.paymentStatus)}">
+										{formatStatus(order.paymentStatus)}
+									</span>
+								</p>
 							</div>
 							<div class="text-right">
-								<p class="text-lg font-bold text-indigo-600">${order.totalPrice}</p>
-								<p class="text-xs text-gray-500">{order.paymentStatus}</p>
+								<p class="text-lg font-bold text-indigo-600">
+									${parseFloat(order.totalPrice).toFixed(2)}
+								</p>
 							</div>
 						</div>
 					</div>

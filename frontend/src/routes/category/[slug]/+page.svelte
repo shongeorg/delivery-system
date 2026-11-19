@@ -5,6 +5,8 @@
 	import { getCategory, addToCart } from '$lib/api';
 	import type { Product, Category } from '$lib/types';
 	import { cartStore } from '$lib/stores/cartStore';
+	import { refreshCartCount } from '$lib/stores/cartCount';
+	import { showToast } from '$lib/stores/toast';
 	import Pagination from '$lib/components/Pagination.svelte';
 
 	let category: Category | null = $state(null);
@@ -59,7 +61,15 @@
 	}
 
 	async function handleAddToCart(product: Product) {
-		await addToCart(product.id, 1);
+		const res = await addToCart(product.id, 1);
+
+		if (res.error) {
+			showToast(res.error, 'error');
+			return;
+		}
+
+		showToast(`${product.name} added to cart`);
+		refreshCartCount();
 	}
 </script>
 

@@ -3,6 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { getCart, updateCartItem, removeFromCart, clearCart } from '$lib/api';
 	import { cartStore } from '$lib/stores/cartStore';
+	import { refreshCartCount } from '$lib/stores/cartCount';
+	import { showToast } from '$lib/stores/toast';
 	import type { CartItem } from '$lib/types';
 
 	// Cart item structure from API: { id, cartId, productId, quantity, product }
@@ -40,6 +42,7 @@
 			console.error('Cart error:', res.error);
 			items = [];
 		}
+		await refreshCartCount();
 		loading = false;
 	}
 
@@ -51,6 +54,8 @@
 
 		if (res.data) {
 			await loadCart();
+		} else if (res.error) {
+			showToast(res.error, 'error');
 		}
 		updating = false;
 	}
@@ -59,6 +64,8 @@
 		const res = await removeFromCart(itemId);
 		if (res.data) {
 			await loadCart();
+		} else if (res.error) {
+			showToast(res.error, 'error');
 		}
 	}
 
@@ -68,6 +75,10 @@
 		if (res.data) {
 			items = [];
 			cartStore.clear();
+			await refreshCartCount();
+			showToast('Cart cleared');
+		} else if (res.error) {
+			showToast(res.error, 'error');
 		}
 	}
 
@@ -123,7 +134,7 @@
 							<!-- Quantity Controls -->
 							<div class="flex items-center space-x-2">
 								<button
-									on:click={() => handleUpdateQuantity(item.id, (item.quantity || 1) - 1)}
+									onclick={() => handleUpdateQuantity(item.id, (item.quantity || 1) - 1)}
 									disabled={updating || (item.quantity || 1) <= 1}
 									class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 flex items-center justify-center"
 								>
@@ -131,7 +142,7 @@
 								</button>
 								<span class="w-12 text-center font-medium">{item.quantity || 1}</span>
 								<button
-									on:click={() => handleUpdateQuantity(item.id, (item.quantity || 1) + 1)}
+									onclick={() => handleUpdateQuantity(item.id, (item.quantity || 1) + 1)}
 									disabled={updating}
 									class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 flex items-center justify-center"
 								>
@@ -148,7 +159,7 @@
 
 							<!-- Remove Button -->
 							<button
-								on:click={() => handleRemove(item.id)}
+								onclick={() => handleRemove(item.id)}
 								disabled={updating}
 								class="text-red-600 hover:text-red-500 disabled:opacity-50"
 							>
@@ -168,7 +179,7 @@
 
 				<div class="flex items-center justify-between space-x-4">
 					<button
-						on:click={handleClear}
+						onclick={handleClear}
 						disabled={updating}
 						class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50"
 					>

@@ -8,9 +8,40 @@ function getAuthHeader(): Record<string, string> {
 	return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+	if (typeof window === 'undefined') return false;
+
+	const refreshToken = localStorage.getItem('refreshToken');
+	if (!refreshToken) return false;
+
+	try {
+		const res = await fetch(`${API_URL}/auth/refresh`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ refreshToken }),
+		});
+
+		if (!res.ok) return false;
+
+		const data = await res.json();
+		if (!data.accessToken) return false;
+
+		localStorage.setItem('accessToken', data.accessToken);
+		if (data.refreshToken) {
+			localStorage.setItem('refreshToken', data.refreshToken);
+		}
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 export async function apiFetch<T>(
 	endpoint: string,
-	options?: RequestInit
+	options?: RequestInit,
+	retried = false
 ): Promise<{ data: T | null; error: string | null; status: number }> {
 	try {
 		const res = await fetch(`${API_URL}${endpoint}`, {
@@ -22,6 +53,17 @@ export async function apiFetch<T>(
 			},
 			credentials: 'include',
 		});
+
+		if (res.status === 401 && !retried && !endpoint.startsWith('/auth/')) {
+			refreshInFlight ??= refreshAccessToken().finally(() => {
+				refreshInFlight = null;
+			});
+
+			const refreshed = await refreshInFlight;
+			if (refreshed) {
+				return apiFetch<T>(endpoint, options, true);
+			}
+		}
 
 		const data = await res.json();
 
@@ -128,6 +170,21 @@ export async function createOrder(orderData: any) {
 	return apiFetch('/orders', {
 		method: 'POST',
 		body: JSON.stringify(orderData),
+	});
+}
+
+// Payments
+export async function createPaymentIntent(orderId: string) {
+	return apiFetch<{ clientSecret: string; paymentIntentId: string }>('/payments/create-intent', {
+		method: 'POST',
+		body: JSON.stringify({ orderId }),
+	});
+}
+
+export async function confirmPayment(orderId: string, paymentIntentId: string) {
+	return apiFetch<{ success: boolean }>('/payments/confirm', {
+		method: 'POST',
+		body: JSON.stringify({ orderId, paymentIntentId }),
 	});
 }
 
