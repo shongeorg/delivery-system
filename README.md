@@ -26,10 +26,10 @@ Full-stack food delivery platform built with modern technologies.
 
 ```
 delivery-system/
-├── backend/                  # Hono API server
+├── backend/                  # Hono API server (port 3000)
 │   ├── src/
 │   │   ├── db/
-│   │   │   ├── schema.ts     # Drizzle schema (all 16 tables)
+│   │   │   ├── schema.ts     # Drizzle schema (21 tables)
 │   │   │   ├── index.ts      # DB connection
 │   │   │   └── seed.ts       # Seed data
 │   │   ├── routes/           # API route handlers
@@ -43,6 +43,7 @@ delivery-system/
 │   │   │   ├── reviews.ts
 │   │   │   ├── inventory.ts
 │   │   │   ├── chats.ts
+│   │   │   ├── owner.ts
 │   │   │   └── payments.ts
 │   │   ├── openapi/          # OpenAPI documented routes
 │   │   │   ├── index.ts      # Scalar UI setup
@@ -62,8 +63,10 @@ delivery-system/
 │   ├── tsconfig.json
 │   ├── vitest.config.ts
 │   └── .env.example
-├── frontend/                 # (coming soon)
-├── courier-app/              # (coming soon)
+├── frontend/                 # SvelteKit customer app (port 3031)
+├── courier-app/              # Vue 3 PWA for couriers (port 3032)
+├── сhef-panel/               # React kitchen panel (port 3033)
+├── ower-panel/               # React owner panel (port 3034)
 └── .gitignore
 ```
 
@@ -106,6 +109,33 @@ npm run dev
 ```
 
 Server starts at `http://localhost:3000`
+
+### 5. Run the apps
+
+Each app is an independent npm project. Install and run from its own directory:
+
+```bash
+cd frontend     && npm install && npm run dev   # http://localhost:3031
+cd courier-app  && npm install && npm run dev   # http://localhost:3032
+cd сhef-panel   && npm install && npm run dev   # http://localhost:3033
+cd ower-panel   && npm install && npm run dev   # http://localhost:3034
+```
+
+Create `frontend/.env` from `frontend/.env.example` before starting the customer app (`PUBLIC_API_URL`, `PUBLIC_WS_URL`, `PUBLIC_STRIPE_PUBLISHABLE_KEY`).
+
+---
+
+## Apps
+
+| App | Stack | Port | Description |
+|-----|-------|------|-------------|
+| `backend` | Hono + Drizzle + Neon | 3000 | REST API, WebSocket, Stripe payments |
+| `frontend` | SvelteKit 5 | 3031 | Customer storefront, cart, checkout, orders |
+| `courier-app` | Vue 3 + Vite PWA | 3032 | Delivery queue and status updates |
+| `сhef-panel` | React + Vite | 3033 | Kitchen orders, recipes, inventory |
+| `ower-panel` | React + Vite | 3034 | Owner dashboard, staff, payroll, finances, kitchen control, settings, audit logs |
+
+Owner panel documentation: [`ower-panel/README.md`](./ower-panel/README.md).
 
 ---
 
@@ -200,7 +230,28 @@ http://localhost:3000/api/docs
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/payments/create-intent` | Create Stripe payment intent 🔒 |
+| POST | `/payments/confirm` | Verify a succeeded PaymentIntent and mark the order paid 🔒 |
 | POST | `/payments/webhook` | Stripe webhook handler |
+
+### Owner
+All owner routes require `owner` or `admin`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/owner/overview` | Dashboard aggregates: revenue, orders, profit, staff, top products, low stock |
+| GET | `/owner/staff` | Accounts with salary terms (search, role filter) |
+| PATCH | `/owner/staff/:id` | Change role, name, phone, blocked flag |
+| PUT | `/owner/staff/:id/salary` | Upsert base salary, bonus percentage, currency |
+| GET | `/owner/payroll` | Payroll payments and totals (optional `period=YYYY-MM`) |
+| POST | `/owner/payroll` | Record a salary or bonus payment |
+| GET | `/owner/finances` | Revenue, payroll, expenses, net profit and daily series |
+| GET | `/owner/expenses` | Expense list |
+| POST | `/owner/expenses` | Create an expense |
+| DELETE | `/owner/expenses/:id` | Delete an expense |
+| GET | `/owner/kitchen` | Live order queue, waiting time, low stock |
+| GET | `/owner/settings` | Restaurant profile and system settings |
+| PATCH | `/owner/settings` | Update restaurant settings |
+| GET | `/owner/audit-logs` | Latest audit records |
 
 ### Chats
 | Method | Path | Description |
@@ -230,7 +281,9 @@ Connect to `ws://localhost:3000/ws`
 
 | Event | Trigger |
 |-------|---------|
-| `order_updated` | Order status changed |
+| `new_order` | New order created |
+| `order_updated` | Order status or payment status changed |
+| `order_cancelled` | Order cancelled |
 | `new_message` | New chat message |
 | `cart_updated` | Cart changed |
 
