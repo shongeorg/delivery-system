@@ -2,12 +2,26 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { products, categories, tags, productCategories, productTags, ingredients } from '../db/schema.js';
+import { products, categories, tags, productCategories, productTags, ingredients, auditLogs } from '../db/schema.js';
 import { authMiddleware, allowRoles } from '../middleware/auth.js';
 import { generateUniqueSlug } from '../utils/slug.js';
 import { eq, inArray } from 'drizzle-orm';
 
 const productsRouter = new Hono();
+
+async function logProductAudit(userId: string, action: string, entityId: string, details: string) {
+  try {
+    await db.insert(auditLogs).values({
+      userId,
+      action,
+      entity: 'product',
+      entityId,
+      details,
+    });
+  } catch (error) {
+    console.error('Failed to write audit log:', error);
+  }
+}
 
 const createProductSchema = z.object({
   name: z.string().min(2),
@@ -142,6 +156,9 @@ productsRouter.post('/', authMiddleware, allowRoles(['owner', 'admin']), zValida
 productsRouter.patch('/:id', authMiddleware, allowRoles(['owner', 'admin']), zValidator('json', createProductSchema.partial()), async (c) => {
   const id = c.req.param('id');
   const data = c.req.valid('json');
+  const userId = c.get('userId');
+
+  const previous = await db.query.products.findFirst({ where: eq(products.id, id) });
 
   const [product] = await db.update(products)
     .set({
@@ -155,14 +172,26 @@ productsRouter.patch('/:id', authMiddleware, allowRoles(['owner', 'admin']), zVa
     return c.json({ error: 'Product not found', code: 404 }, 404);
   }
 
+  await logProductAudit(
+    userId,
+    'product.update',
+    id,
+    JSON.stringify({ previousPrice: previous?.price ?? null, nextPrice: product.price, changed: data })
+  );
+
   return c.json(product);
 });
 
 // Delete product (admin/owner only)
 productsRouter.delete('/:id', authMiddleware, allowRoles(['owner', 'admin']), async (c) => {
   const id = c.req.param('id')!;
+  const userId = c.get('userId');
 
-  await db.delete(products).where(eq(products.id, id));
+  const [deleted] = await db.delete(products).where(eq(products.id, id)).returning();
+
+  if (deleted) {
+    await logProductAudit(userId, 'product.delete', id, JSON.stringify({ name: deleted.name }));
+  }
 
   return c.json({ success: true });
 });

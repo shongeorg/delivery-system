@@ -16,6 +16,7 @@ import tagsRouter from './routes/tags.js';
 import inventoryRouter from './routes/inventory.js';
 import chatsRouter from './routes/chats.js';
 import paymentsRouter from './routes/payments.js';
+import ownerRouter from './routes/owner.js';
 import { setupWebSocket } from './websocket.js';
 
 // OpenAPI routes
@@ -54,6 +55,7 @@ app.route('/tags', tagsRouter);
 app.route('/inventory', inventoryRouter);
 app.route('/chats', chatsRouter);
 app.route('/payments', paymentsRouter);
+app.route('/owner', ownerRouter);
 
 // OpenAPI Routes (for docs)
 app.route('/api', openAPIApp);

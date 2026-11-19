@@ -16,6 +16,7 @@ export const users = pgTable('users', {
   phone: text('phone'),
   address: text('address'),
   isBlockedFromReviews: boolean('is_blocked_from_reviews').default(false),
+  isBlocked: boolean('is_blocked').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -58,16 +59,16 @@ export const tags = pgTable('tags', {
 
 // Product-Categories junction
 export const productCategories = pgTable('product_categories', {
-  productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }),
-  categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  categoryId: uuid('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
 }, (t) => ({
   pk: primaryKey({ columns: [t.productId, t.categoryId] }),
 }));
 
 // Product-Tags junction
 export const productTags = pgTable('product_tags', {
-  productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }),
-  tagId: uuid('tag_id').references(() => tags.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  tagId: uuid('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
 }, (t) => ({
   pk: primaryKey({ columns: [t.productId, t.tagId] }),
 }));
@@ -154,5 +155,64 @@ export const messages = pgTable('messages', {
   chatId: uuid('chat_id').references(() => chats.id, { onDelete: 'cascade' }),
   sender: text('sender').notNull(),
   text: text('text').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Staff salary terms
+export const staffSalaries = pgTable('staff_salaries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').unique().references(() => users.id, { onDelete: 'cascade' }),
+  baseSalary: numeric('base_salary').notNull().default('0'),
+  bonusPercentage: numeric('bonus_percentage').notNull().default('0'),
+  currency: text('currency').notNull().default('USD'),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Payroll payments
+export const payrollPayments = pgTable('payroll_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  amount: numeric('amount').notNull(),
+  type: text('type').notNull(),
+  period: text('period'),
+  note: text('note'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Expenses
+export const expenses = pgTable('expenses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  category: text('category').notNull(),
+  amount: numeric('amount').notNull(),
+  note: text('note'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Restaurant settings
+export const restaurantSettings = pgTable('restaurant_settings', {
+  id: text('id').primaryKey().default('main'),
+  name: text('name').notNull().default('FoodDelivery'),
+  phone: text('phone'),
+  address: text('address'),
+  workingHours: text('working_hours'),
+  currency: text('currency').notNull().default('USD'),
+  taxRate: numeric('tax_rate').notNull().default('0'),
+  deliveryFee: numeric('delivery_fee').notNull().default('0'),
+  logo: text('logo'),
+  cover: text('cover'),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Audit logs
+export const auditLogs = pgTable('audit_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id),
+  action: text('action').notNull(),
+  entity: text('entity').notNull(),
+  entityId: text('entity_id'),
+  details: text('details'),
   createdAt: timestamp('created_at').defaultNow(),
 });
