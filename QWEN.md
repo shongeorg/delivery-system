@@ -1,5 +1,7 @@
 # 🍕 Food Delivery System — Project Context
 
+> **Історичний документ.** Описує початковий задум і не відповідає поточному коду (курьерський застосунок уже реалізовано, з'явилися owner-панель, трекінг, чат). Актуальний стан: [`README.md`](./README.md) і [`docs/`](./docs/).
+
 ## Project Overview
 
 A full-stack food delivery platform consisting of three applications:

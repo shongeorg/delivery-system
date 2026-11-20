@@ -17,7 +17,7 @@ Only users with the `owner` role can open the panel. The backend additionally al
 | Staff details | `/staff/:id` | Profile, salary terms, calculated bonus, accrued bonus, full payment history. |
 | Payroll | `/payroll` | Payroll totals, month filter, record salary or bonus payments, payment history. |
 | Finances | `/finances` | Date-range revenue / payroll / expenses / net profit, daily cash-flow chart, expenses CRUD, payroll in period. |
-| Kitchen | `/kitchen` | Live queue by status, waiting time per order, order items, oldest-order alert, low stock. Refreshes every 10 s. |
+| Kitchen | `/kitchen` | Live queue by status, waiting time per order, order items, assigned courier (name, phone), oldest-order alert, low stock. Refreshes every 10 s. |
 | Restaurant | `/settings` | Name, logo / cover URLs with preview, phone, address, working hours, currency, tax rate, delivery fee. |
 | Audit logs | `/audit-logs` | Every salary, payroll, expense, settings and product price/delete change with user and payload. |
 

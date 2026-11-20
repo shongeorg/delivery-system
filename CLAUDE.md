@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+> **Історичний документ.** Описує ранній стан репозиторію; частина тверджень застаріла. Актуально: [`README.md`](./README.md), [`docs/`](./docs/), [`AGENTS.md`](./AGENTS.md).
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Quick Start

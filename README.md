@@ -1,333 +1,165 @@
 # 🍕 Food Delivery System
 
-Full-stack food delivery platform built with modern technologies.
+Повний цикл доставки їжі: вітрина для клієнта, кухня, кур'єрський PWA і панель власника. П'ять незалежних застосунків навколо одного REST/WebSocket API.
 
-![Backend Cover](./backend-cover.jpg)
+> `project.*.spec.md` — початкові проєктні специфікації. Вони описують задум, а не поточний код. Актуальний стан описано тут і в `docs/`. Де специфікація розходиться з кодом — правий код.
 
----
+## Застосунки
 
-## Stack
+| Застосунок | Стек | Порт | Роль |
+|---|---|---|---|
+| `backend` | Node.js, Hono, Drizzle ORM, Neon PostgreSQL, Zod, JWT, ws, Stripe | 3000 | REST API, WebSocket, платежі, геокодинг |
+| `frontend` | SvelteKit 5 (runes), Tailwind 4, Leaflet, Stripe.js | 3031 | Вітрина, кошик, checkout, трекінг замовлення, чат |
+| `courier-app` | Vue 3.5, Pinia, vue-router, Vite 7, Leaflet, PWA | 3032 | Черга доставок, маршрут до клієнта, чат |
+| `сhef-panel` | React 18, Vite, TanStack Query | 3033 | Кухня: замовлення, рецепти, склад |
+| `ower-panel` | React 18, Vite, TanStack Query, Recharts | 3034 | Власник: дашборд, персонал, зарплати, фінанси, кухня, налаштування, аудит |
 
-### Backend
-- **Runtime**: Node.js
-- **Framework**: [Hono](https://hono.dev/)
-- **Database**: [Neon PostgreSQL](https://neon.tech/)
-- **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
-- **Validation**: [Zod](https://zod.dev/)
-- **Auth**: JWT + Refresh Tokens
-- **Realtime**: WebSocket
-- **Payments**: Stripe
-- **API Docs**: OpenAPI + Scalar UI
-- **Tests**: Vitest
+`сhef-panel` починається з кириличної `с` (U+0441), `ower-panel` — з латинської `o`.
 
----
+## Ролі
 
-## Project Structure
+| Роль | Що може |
+|---|---|
+| `customer` | Каталог, кошик, свої замовлення, трекінг, чат по замовленню |
+| `courier` | Список готових доставок, прийняття, маршрут, локація, чат, доставлено |
+| `chef` | Черга кухні, статуси `created → cooking → ready`, склад, рецепти |
+| `owner` | Усе: кухня, персонал, зарплати, фінанси, налаштування, аудит |
+| `admin` | Те саме, що owner, крім зміни власника; входить і в owner-панель, і в кухню |
 
-```
-delivery-system/
-├── backend/                  # Hono API server (port 3000)
-│   ├── src/
-│   │   ├── db/
-│   │   │   ├── schema.ts     # Drizzle schema (21 tables)
-│   │   │   ├── index.ts      # DB connection
-│   │   │   └── seed.ts       # Seed data
-│   │   ├── routes/           # API route handlers
-│   │   │   ├── auth.ts
-│   │   │   ├── users.ts
-│   │   │   ├── products.ts
-│   │   │   ├── categories.ts
-│   │   │   ├── tags.ts
-│   │   │   ├── orders.ts
-│   │   │   ├── cart.ts
-│   │   │   ├── reviews.ts
-│   │   │   ├── inventory.ts
-│   │   │   ├── chats.ts
-│   │   │   ├── owner.ts
-│   │   │   └── payments.ts
-│   │   ├── openapi/          # OpenAPI documented routes
-│   │   │   ├── index.ts      # Scalar UI setup
-│   │   │   ├── auth.ts
-│   │   │   ├── products.ts
-│   │   │   └── categories.ts
-│   │   ├── middleware/
-│   │   │   └── auth.ts       # JWT + role middleware
-│   │   ├── utils/
-│   │   │   ├── auth.ts       # bcrypt + JWT helpers
-│   │   │   └── slug.ts       # Slug generator
-│   │   ├── tests/
-│   │   │   └── api.test.ts   # Vitest API tests
-│   │   ├── websocket.ts      # WebSocket server
-│   │   └── index.ts          # App entry point
-│   ├── drizzle.config.ts
-│   ├── tsconfig.json
-│   ├── vitest.config.ts
-│   └── .env.example
-├── frontend/                 # SvelteKit customer app (port 3031)
-├── courier-app/              # Vue 3 PWA for couriers (port 3032)
-├── сhef-panel/               # React kitchen panel (port 3033)
-├── ower-panel/               # React owner panel (port 3034)
-└── .gitignore
-```
-
----
-
-## Getting Started
-
-### 1. Clone & install
+## Швидкий старт
 
 ```bash
-git clone <repo-url>
-cd delivery-system/backend
+# 1. Backend
+cd backend
 npm install
-```
-
-### 2. Setup environment
-
-```bash
-cp .env.example .env
-# Fill in your values in .env
-```
-
-Required:
-- `POSTGRES_URL` — Neon PostgreSQL connection string
-- `JWT_SECRET` — random secret (min 64 chars)
-- `JWT_REFRESH_SECRET` — another random secret
-- `STRIPE_SECRET_KEY` — from Stripe dashboard
-
-### 3. Push DB schema & seed
-
-```bash
+cp .env.example .env          # POSTGRES_URL, JWT_SECRET, JWT_REFRESH_SECRET, STRIPE_*
 npm run db:push
 npm run db:seed
+npm run dev                   # http://localhost:3000
+
+# 2. Клієнт
+cd frontend
+npm install
+cp .env.example .env          # PUBLIC_API_URL, PUBLIC_STRIPE_PUBLISHABLE_KEY
+npm run dev                   # http://localhost:3031
+
+# 3. Кур'єр
+cd courier-app && npm install && npm run dev     # http://localhost:3032
+
+# 4. Кухня
+cd сhef-panel && npm install && npm run dev      # http://localhost:3033
+
+# 5. Власник
+cd ower-panel && npm install && npm run dev      # http://localhost:3034
 ```
 
-### 4. Run development server
+Кореневого `package.json` немає: кожен застосунок ставиться й запускається зі своєї теки. CORS у `backend/src/index.ts` дозволяє 3000, 3031, 3032, 3033, 3034.
 
-```bash
-npm run dev
+## Архітектура
+
+```mermaid
+flowchart LR
+  C[frontend 3031<br/>customer] -->|REST + WS| API
+  K[сhef-panel 3033<br/>kitchen] -->|REST, polling 5s| API
+  V[courier-app 3032<br/>courier PWA] -->|REST + WS| API
+  O[ower-panel 3034<br/>owner] -->|REST, polling 10-30s| API
+  API[Hono API + ws<br/>:3000] --> DB[(Neon PostgreSQL)]
+  API --> S[Stripe]
+  API --> N[Nominatim geocoding]
+  V --> R[OSRM routing]
+  C --> T[OpenStreetMap tiles]
+  V --> T
 ```
 
-Server starts at `http://localhost:3000`
+Деталі: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-### 5. Run the apps
+## Життєвий цикл замовлення
 
-Each app is an independent npm project. Install and run from its own directory:
-
-```bash
-cd frontend     && npm install && npm run dev   # http://localhost:3031
-cd courier-app  && npm install && npm run dev   # http://localhost:3032
-cd сhef-panel   && npm install && npm run dev   # http://localhost:3033
-cd ower-panel   && npm install && npm run dev   # http://localhost:3034
+```mermaid
+stateDiagram-v2
+  [*] --> created
+  created --> paid: Stripe confirm
+  created --> cooking: chef accepts
+  paid --> cooking
+  cooking --> ready
+  ready --> on_the_way: courier accepts (courierId assigned)
+  on_the_way --> delivered: assigned courier
+  created --> cancelled
+  paid --> cancelled
+  cooking --> cancelled
+  ready --> cancelled
+  on_the_way --> cancelled
+  delivered --> [*]
+  cancelled --> [*]
 ```
 
-Create `frontend/.env` from `frontend/.env.example` before starting the customer app (`PUBLIC_API_URL`, `PUBLIC_WS_URL`, `PUBLIC_STRIPE_PUBLISHABLE_KEY`).
+Переходи валідуються на бекенді (`allowedTransitions` у `backend/src/routes/orders.ts`); кур'єр може ставити лише `on_the_way` і `delivered`, і лише для замовлення, яке ще нікому не призначене. Деталі: [`docs/ORDER-LIFECYCLE.md`](docs/ORDER-LIFECYCLE.md).
 
----
+## Відстеження і чат
 
-## Apps
+- Клієнт вказує точку доставки на checkout: `navigator.geolocation`, а якщо вона недоступна — бекенд геокодить адресу через Nominatim (`POST /geo/geocode`). Точка зберігається в `orders.lat/lng`.
+- Кур'єр приймає замовлення → `orders.courierId`. Позиція кур'єра пише в `courier_locations` через WS (`courier_location_update`) або HTTP (`PUT /orders/:id/location`).
+- Клієнт бачить кур'єра на `/orders/:id`: карта, маркер, лінія, статус-таймлайн, телефон і чат. Дані — `GET /orders/:id/tracking` + WS-канал `order:<id>` + полінг 5 с.
+- Кур'єр на `/orders/:id/map` бачить маршрут до клієнта (OSRM) з відстанню й ETA.
+- Чат прив'язаний до замовлення: клієнт ↔ кур'єр ↔ адмін/власник (`/chats/order/:orderId/messages`).
 
-| App | Stack | Port | Description |
-|-----|-------|------|-------------|
-| `backend` | Hono + Drizzle + Neon | 3000 | REST API, WebSocket, Stripe payments |
-| `frontend` | SvelteKit 5 | 3031 | Customer storefront, cart, checkout, orders |
-| `courier-app` | Vue 3 + Vite PWA | 3032 | Delivery queue and status updates |
-| `сhef-panel` | React + Vite | 3033 | Kitchen orders, recipes, inventory |
-| `ower-panel` | React + Vite | 3034 | Owner dashboard, staff, payroll, finances, kitchen control, settings, audit logs |
-
-Owner panel documentation: [`ower-panel/README.md`](./ower-panel/README.md).
-
----
-
-## API Docs
-
-Interactive API documentation (Scalar UI):
-
-```
-http://localhost:3000/api/docs
-```
-
----
-
-## API Endpoints
-
-### Auth
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/auth/register` | Register new user |
-| POST | `/auth/login` | Login |
-| POST | `/auth/refresh` | Refresh access token |
-
-### Users
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/users/me` | Get current user 🔒 |
-| PATCH | `/users/me` | Update current user 🔒 |
-| GET | `/users/:slug` | Get user by slug |
-
-### Products
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/products` | Get all products |
-| GET | `/products/:slug` | Get product by slug |
-| POST | `/products` | Create product 🔒 admin/owner |
-| PATCH | `/products/:id` | Update product 🔒 admin/owner |
-| DELETE | `/products/:id` | Delete product 🔒 admin/owner |
-
-### Categories
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/categories` | Get all categories |
-| GET | `/categories/:slug` | Get category with products |
-| POST | `/categories` | Create category 🔒 admin/owner |
-| PATCH | `/categories/:id` | Update category 🔒 admin/owner |
-| DELETE | `/categories/:id` | Delete category 🔒 admin/owner |
-
-### Tags
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/tags` | Get all tags |
-| GET | `/tags/:slug` | Get tag with products |
-| POST | `/tags` | Create tag 🔒 admin/owner |
-| DELETE | `/tags/:id` | Delete tag 🔒 admin/owner |
-
-### Orders
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/orders` | Get all orders 🔒 admin/owner/chef/courier |
-| GET | `/orders/my` | Get my orders 🔒 |
-| GET | `/orders/:id` | Get order by id 🔒 |
-| POST | `/orders` | Create order 🔒 |
-| PATCH | `/orders/:id/status` | Update status 🔒 admin/owner/chef/courier |
-| POST | `/orders/:id/cancel` | Cancel order 🔒 |
-
-### Cart
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/cart` | Get my cart 🔒 |
-| POST | `/cart/items` | Add item to cart 🔒 |
-| PATCH | `/cart/items/:id` | Update item quantity 🔒 |
-| DELETE | `/cart/items/:id` | Remove item 🔒 |
-| DELETE | `/cart` | Clear cart 🔒 |
-
-### Reviews
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/reviews/product/:productId` | Get product reviews |
-| POST | `/reviews` | Create review 🔒 |
-| PATCH | `/reviews/:id` | Update review 🔒 |
-| DELETE | `/reviews/:id` | Delete review 🔒 |
-
-### Inventory
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/inventory` | Get all inventory 🔒 admin/owner/chef |
-| POST | `/inventory` | Create item 🔒 admin/owner |
-| PATCH | `/inventory/:id/quantity` | Update quantity 🔒 |
-| DELETE | `/inventory/:id` | Delete item 🔒 admin/owner |
-
-### Payments
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/payments/create-intent` | Create Stripe payment intent 🔒 |
-| POST | `/payments/confirm` | Verify a succeeded PaymentIntent and mark the order paid 🔒 |
-| POST | `/payments/webhook` | Stripe webhook handler |
-
-### Owner
-All owner routes require `owner` or `admin`.
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/owner/overview` | Dashboard aggregates: revenue, orders, profit, staff, top products, low stock |
-| GET | `/owner/staff` | Accounts with salary terms (search, role filter) |
-| PATCH | `/owner/staff/:id` | Change role, name, phone, blocked flag |
-| PUT | `/owner/staff/:id/salary` | Upsert base salary, bonus percentage, currency |
-| GET | `/owner/payroll` | Payroll payments and totals (optional `period=YYYY-MM`) |
-| POST | `/owner/payroll` | Record a salary or bonus payment |
-| GET | `/owner/finances` | Revenue, payroll, expenses, net profit and daily series |
-| GET | `/owner/expenses` | Expense list |
-| POST | `/owner/expenses` | Create an expense |
-| DELETE | `/owner/expenses/:id` | Delete an expense |
-| GET | `/owner/kitchen` | Live order queue, waiting time, low stock |
-| GET | `/owner/settings` | Restaurant profile and system settings |
-| PATCH | `/owner/settings` | Update restaurant settings |
-| GET | `/owner/audit-logs` | Latest audit records |
-
-### Chats
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/chats` | Get chats 🔒 |
-| POST | `/chats` | Get or create chat 🔒 |
-| GET | `/chats/:id/messages` | Get chat messages 🔒 |
-| POST | `/chats/:id/messages` | Send message 🔒 |
-
----
+Деталі: [`docs/REALTIME.md`](docs/REALTIME.md), [`docs/TRACKING-AND-CHAT.md`](docs/TRACKING-AND-CHAT.md).
 
 ## WebSocket
 
-Connect to `ws://localhost:3000/ws`
+`ws://localhost:3000/ws`, конверт `{ "type": ..., "data": ... }`.
 
-### Events
+| Клієнт → сервер | Призначення |
+|---|---|
+| `auth` | JWT access token |
+| `subscribe` / `unsubscribe` | Канал `order:<id>` (перевіряється доступ) або `orders` |
+| `courier_location_update` | `{ orderId, lat, lng }` від кур'єра |
 
-```json
-// Authenticate
-{ "type": "auth", "token": "<access_token>" }
+| Сервер → клієнт | Коли |
+|---|---|
+| `new_order`, `order_updated`, `order_cancelled` | Створення / зміна статусу / скасування |
+| `courier_location` | Нова позиція кур'єра (канал замовлення + ролі owner/admin) |
+| `chat_message` | Нове повідомлення в чаті замовлення |
 
-// Subscribe to channel
-{ "type": "subscribe", "channel": "orders" }
-```
+## API
 
-### Server broadcasts
+Повний перелік: [`docs/API.md`](docs/API.md). Інтерактивна документація — `http://localhost:3000/api/docs`.
 
-| Event | Trigger |
-|-------|---------|
-| `new_order` | New order created |
-| `order_updated` | Order status or payment status changed |
-| `order_cancelled` | Order cancelled |
-| `new_message` | New chat message |
-| `cart_updated` | Cart changed |
+Ключові групи: `/auth`, `/users`, `/products`, `/categories`, `/tags`, `/orders`, `/cart`, `/payments`, `/chats`, `/geo`, `/inventory`, `/reviews`, `/owner`.
 
----
+## Дані
 
-## Roles
+22 таблиці в `backend/src/db/schema.ts`, включно з `orders.courierId/lat/lng`, `courier_locations`, `chats.orderId`. Схема й призначення кожної таблиці: [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md).
 
-| Role | Access |
-|------|--------|
-| `owner` | Full access |
-| `admin` | Full access except owner actions |
-| `chef` | Orders, inventory |
-| `courier` | Orders |
-| `customer` | Own orders, cart, reviews |
+## Тестові акаунти
 
----
-
-## Order Flow
-
-```
-created → paid → cooking → ready → on_the_way → delivered
-                                              ↘ cancelled
-```
-
----
-
-## Seed Data (test accounts)
-
-| Email | Password | Role |
-|-------|----------|------|
+| Email | Пароль | Роль |
+|---|---|---|
 | `owner@test.com` | `owner123` | owner |
 | `admin@test.com` | `admin123` | admin |
+| `cura1@mail.com` | `cura123` | courier |
+| `cura2@mail.com` | `cura123` | courier |
 
----
+## Документація
 
-## Scripts
+| Файл | Про що |
+|---|---|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Компоненти, технології, потоки даних, авторизація, env |
+| [`docs/DATA-MODEL.md`](docs/DATA-MODEL.md) | ER-схема і всі 22 таблиці |
+| [`docs/ORDER-LIFECYCLE.md`](docs/ORDER-LIFECYCLE.md) | Статуси, матриця переходів, права ролей, оплата |
+| [`docs/REALTIME.md`](docs/REALTIME.md) | Протокол WebSocket, канали, фолбеки |
+| [`docs/TRACKING-AND-CHAT.md`](docs/TRACKING-AND-CHAT.md) | Геолокація, геокодинг, маршрут, чат по замовленню |
+| [`docs/USER-STORIES.md`](docs/USER-STORIES.md) | Сценарії за ролями, що реалізовано, що ні |
+| [`docs/API.md`](docs/API.md) | Усі ендпоінти з правами |
+| [`courier-app/README.md`](courier-app/README.md) | Кур'єрський застосунок |
+| [`frontend/README.md`](frontend/README.md) | Клієнтський застосунок |
+| [`ower-panel/README.md`](ower-panel/README.md) | Панель власника |
 
-```bash
-npm run dev          # Start dev server (tsx watch)
-npm run build        # TypeScript build
-npm run start        # Start production server
-npm run db:generate  # Generate Drizzle migrations
-npm run db:push      # Push schema to DB
-npm run db:studio    # Open Drizzle Studio
-npm run db:seed      # Seed database
-npm test             # Run Vitest tests
-```
+## Відомі обмеження
+
+- **Геолокація в тестовому браузері.** У середовищі перевірки Chrome має `denied` для geolocation, тому маршрут кур'єра будувався без стартової точки. Код обробляє це чесно (кнопка «Share my location» неактивна, карта показує адресу), але в такому браузері OSRM-маршрут не намалюється.
+- **Готівка.** Замовлення з `paymentType: cash` створюється з `paymentStatus: pending` і не має окремого ендпоінта «оплачено готівкою»; дохід у фінансах рахується лише за `paid`.
+- **Адмін-панелі немає.** Роль `admin` користується owner-панеллю (її API дозволяє `owner` і `admin`, UI-гард — лише `owner`).
+- **OpenAPI.** Документовані лише частина маршрутів; `/orders`, `/chats`, `/geo`, `/owner` в OpenAPI не описані.
+- **Тести не герметичні.** `backend` Vitest ходить у живий `localhost:3000` і пише в БД; у `src/tests/api.test.ts` є застаріле очікування масиву `/products`.
+- **Чати поза замовленням.** Старі `/chats` (клієнт ↔ адмін) залишені в API, але UI не використовує їх; робочий чат — тільки `/chats/order/:orderId`.
