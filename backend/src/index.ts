@@ -15,6 +15,7 @@ import reviewsRouter from './routes/reviews.js';
 import tagsRouter from './routes/tags.js';
 import inventoryRouter from './routes/inventory.js';
 import chatsRouter from './routes/chats.js';
+import geoRouter from './routes/geo.js';
 import paymentsRouter from './routes/payments.js';
 import ownerRouter from './routes/owner.js';
 import { setupWebSocket } from './websocket.js';
@@ -54,6 +55,7 @@ app.route('/reviews', reviewsRouter);
 app.route('/tags', tagsRouter);
 app.route('/inventory', inventoryRouter);
 app.route('/chats', chatsRouter);
+app.route('/geo', geoRouter);
 app.route('/payments', paymentsRouter);
 app.route('/owner', ownerRouter);
 

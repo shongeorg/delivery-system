@@ -1,9 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import axios from 'axios'
-import { useAuthStore } from './auth'
-
-const API_URL = 'http://localhost:3000'
+import api from '../api/client'
 
 export const useOrderStore = defineStore('orders', () => {
   const orders = ref([])
@@ -13,10 +10,7 @@ export const useOrderStore = defineStore('orders', () => {
   async function fetchOrders() {
     loading.value = true
     try {
-      const authStore = useAuthStore()
-      const res = await axios.get(`${API_URL}/orders`, {
-        headers: { Authorization: `Bearer ${authStore.accessToken}` }
-      })
+      const res = await api.get('/orders')
       orders.value = res.data
       return res.data
     } catch (error) {
@@ -30,10 +24,7 @@ export const useOrderStore = defineStore('orders', () => {
   async function fetchOrderById(id) {
     loading.value = true
     try {
-      const authStore = useAuthStore()
-      const res = await axios.get(`${API_URL}/orders/${id}`, {
-        headers: { Authorization: `Bearer ${authStore.accessToken}` }
-      })
+      const res = await api.get(`/orders/${id}`)
       currentOrder.value = res.data
       return res.data
     } catch (error) {
@@ -46,12 +37,7 @@ export const useOrderStore = defineStore('orders', () => {
 
   async function updateStatus(id, status) {
     try {
-      const authStore = useAuthStore()
-      const res = await axios.patch(
-        `${API_URL}/orders/${id}/status`,
-        { status },
-        { headers: { Authorization: `Bearer ${authStore.accessToken}` } }
-      )
+      const res = await api.patch(`/orders/${id}/status`, { status })
       const index = orders.value.findIndex(o => o.id === id)
       if (index !== -1) {
         orders.value[index].status = status

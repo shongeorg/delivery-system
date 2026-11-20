@@ -20,6 +20,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/orders/:id/map',
+    name: 'order-route',
+    component: () => import('../views/OrderRouteView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/map',
     name: 'map',
     component: () => import('../views/MapView.vue'),

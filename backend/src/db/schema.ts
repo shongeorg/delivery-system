@@ -104,6 +104,9 @@ export const orders = pgTable('orders', {
   phone: text('phone'),
   paymentType: text('payment_type').notNull(),
   paymentStatus: text('payment_status').notNull(),
+  courierId: uuid('courier_id').references(() => users.id),
+  lat: numeric('lat'),
+  lng: numeric('lng'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -147,6 +150,7 @@ export const cartItems = pgTable('cart_items', {
 export const chats = pgTable('chats', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
+  orderId: uuid('order_id').unique().references(() => orders.id, { onDelete: 'cascade' }),
 });
 
 // Messages
@@ -156,6 +160,15 @@ export const messages = pgTable('messages', {
   sender: text('sender').notNull(),
   text: text('text').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Courier locations
+export const courierLocations = pgTable('courier_locations', {
+  courierId: uuid('courier_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  orderId: uuid('order_id').references(() => orders.id, { onDelete: 'cascade' }),
+  lat: numeric('lat').notNull(),
+  lng: numeric('lng').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 // Staff salary terms

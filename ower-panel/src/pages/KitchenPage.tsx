@@ -108,6 +108,12 @@ export function KitchenPage() {
                         {order.deliveryType === 'delivery' ? 'Delivery' : 'Pickup'} · {order.paymentType} (
                         {order.paymentStatus})
                       </div>
+                      {order.courier && (
+                        <div className="text-xs text-indigo-700 mt-1">
+                          Courier: {order.courier.name}
+                          {order.courier.phone ? ` · ${order.courier.phone}` : ''}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="font-semibold text-gray-900">{formatMoney(order.totalPrice)}</div>

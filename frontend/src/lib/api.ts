@@ -1,4 +1,5 @@
 import { PUBLIC_API_URL } from '$env/static/public';
+import type { Chat, Message, OrderTracking } from './types';
 
 export const API_URL = PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -166,10 +167,38 @@ export async function getOrder(id: string) {
 	return apiFetch<any>(`/orders/${id}`);
 }
 
+export async function getOrderTracking(id: string) {
+	return apiFetch<OrderTracking>(`/orders/${id}/tracking`);
+}
+
 export async function createOrder(orderData: any) {
 	return apiFetch('/orders', {
 		method: 'POST',
 		body: JSON.stringify(orderData),
+	});
+}
+
+// Chat
+export async function getOrderChat(orderId: string) {
+	return apiFetch<Chat>(`/chats/order/${orderId}`);
+}
+
+export async function getOrderMessages(orderId: string) {
+	return apiFetch<Message[]>(`/chats/order/${orderId}/messages`);
+}
+
+export async function sendOrderMessage(orderId: string, text: string) {
+	return apiFetch<Message>(`/chats/order/${orderId}/messages`, {
+		method: 'POST',
+		body: JSON.stringify({ text }),
+	});
+}
+
+// Geo
+export async function geocodeAddress(address: string) {
+	return apiFetch<{ lat: number; lng: number; displayName: string }>('/geo/geocode', {
+		method: 'POST',
+		body: JSON.stringify({ address }),
 	});
 }
 

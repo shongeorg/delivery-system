@@ -151,10 +151,18 @@
 									</span>
 								</p>
 							</div>
-							<div class="text-right">
+							<div class="text-right space-y-2">
 								<p class="text-lg font-bold text-indigo-600">
 									${parseFloat(order.totalPrice).toFixed(2)}
 								</p>
+								<a
+									href={`/orders/${order.id}`}
+									class="inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-800"
+								>
+									{['on_the_way', 'ready', 'cooking', 'paid'].includes(order.status)
+										? 'Track order'
+										: 'Details'}
+								</a>
 							</div>
 						</div>
 					</div>

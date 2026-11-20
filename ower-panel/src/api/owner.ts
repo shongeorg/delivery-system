@@ -31,6 +31,8 @@ export interface Order {
   phone?: string | null;
   paymentType: string;
   paymentStatus: string;
+  courierId?: string | null;
+  courier?: { id: string; name: string; phone?: string | null } | null;
   createdAt: string;
   items?: OrderItem[];
 }

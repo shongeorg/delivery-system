@@ -2,12 +2,20 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import { useOrderStore } from './order'
+import { useChatStore } from './chat'
 
 const WS_URL = 'ws://localhost:3000/ws'
 
 export const useSocketStore = defineStore('socket', () => {
   const socket = ref(null)
   const connected = ref(false)
+  const channels = new Set()
+
+  function send(payload) {
+    if (socket.value && connected.value) {
+      socket.value.send(JSON.stringify(payload))
+    }
+  }
 
   function connect() {
     const authStore = useAuthStore()
@@ -17,19 +25,9 @@ export const useSocketStore = defineStore('socket', () => {
 
     socket.value.onopen = () => {
       connected.value = true
-      console.log('WebSocket connected')
-
-      // Authenticate
-      socket.value.send(JSON.stringify({
-        type: 'auth',
-        token: authStore.accessToken
-      }))
-
-      // Subscribe to orders channel
-      socket.value.send(JSON.stringify({
-        type: 'subscribe',
-        channel: 'orders'
-      }))
+      send({ type: 'auth', token: authStore.accessToken })
+      channels.forEach((channel) => send({ type: 'subscribe', channel }))
+      send({ type: 'subscribe', channel: 'orders' })
     }
 
     socket.value.onmessage = (event) => {
@@ -39,19 +37,27 @@ export const useSocketStore = defineStore('socket', () => {
 
     socket.value.onclose = () => {
       connected.value = false
-      console.log('WebSocket disconnected')
-
-      // Auto reconnect after 3 seconds
       setTimeout(connect, 3000)
     }
 
-    socket.value.onerror = (error) => {
-      console.error('WebSocket error:', error)
+    socket.value.onerror = () => {
+      connected.value = false
     }
+  }
+
+  function subscribe(channel) {
+    channels.add(channel)
+    send({ type: 'subscribe', channel })
+  }
+
+  function unsubscribe(channel) {
+    channels.delete(channel)
+    send({ type: 'unsubscribe', channel })
   }
 
   function handleSocketMessage(message) {
     const orderStore = useOrderStore()
+    const chatStore = useChatStore()
 
     switch (message.type) {
       case 'order_updated':
@@ -63,7 +69,8 @@ export const useSocketStore = defineStore('socket', () => {
         }
         break
 
-      case 'new_message':
+      case 'chat_message':
+        chatStore.receive(message.data)
         break
 
       default:
@@ -72,14 +79,7 @@ export const useSocketStore = defineStore('socket', () => {
   }
 
   function sendLocationUpdate(orderId, lat, lng) {
-    if (socket.value && connected.value) {
-      socket.value.send(JSON.stringify({
-        type: 'courier_location_update',
-        orderId,
-        lat,
-        lng
-      }))
-    }
+    send({ type: 'courier_location_update', orderId, lat, lng })
   }
 
   function disconnect() {
@@ -95,6 +95,8 @@ export const useSocketStore = defineStore('socket', () => {
     connected,
     connect,
     disconnect,
+    subscribe,
+    unsubscribe,
     sendLocationUpdate
   }
 })

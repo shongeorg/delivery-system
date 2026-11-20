@@ -76,8 +76,41 @@ export interface Order {
 	phone: string;
 	paymentType: 'card' | 'cash';
 	paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+	courierId?: string | null;
+	lat?: string | null;
+	lng?: string | null;
 	createdAt: string;
 	items?: OrderItem[];
+}
+
+export interface TrackingCourier {
+	id: string;
+	name: string;
+	phone?: string | null;
+}
+
+export interface TrackingLocation {
+	lat: number;
+	lng: number;
+	updatedAt: string;
+}
+
+export interface OrderTracking {
+	order: Pick<
+		Order,
+		| 'id'
+		| 'status'
+		| 'deliveryType'
+		| 'address'
+		| 'phone'
+		| 'totalPrice'
+		| 'paymentType'
+		| 'paymentStatus'
+		| 'createdAt'
+	> & { items: OrderItem[] };
+	client: { lat: number | null; lng: number | null };
+	courier: TrackingCourier | null;
+	location: TrackingLocation | null;
 }
 
 export interface OrderItem {
@@ -112,13 +145,14 @@ export interface InventoryItem {
 export interface Chat {
 	id: string;
 	userId: string;
+	orderId?: string | null;
 	messages?: Message[];
 }
 
 export interface Message {
 	id: string;
 	chatId: string;
-	sender: 'user' | 'admin';
+	sender: 'user' | 'courier' | 'admin';
 	text: string;
 	createdAt: string;
 }

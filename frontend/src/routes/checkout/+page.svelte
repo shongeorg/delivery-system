@@ -8,7 +8,8 @@
 		createOrder,
 		createPaymentIntent,
 		confirmPayment,
-		getCurrentUser
+		getCurrentUser,
+		geocodeAddress
 	} from '$lib/api';
 
 	interface CartLineItem {
@@ -44,6 +45,9 @@
 	let error = $state('');
 	let step = $state('');
 	let cardReady = $state(false);
+	let coords = $state<{ lat: number; lng: number } | null>(null);
+	let locating = $state(false);
+	let locationNote = $state('');
 
 	let stripe: Stripe | null = null;
 	let cardElement: StripeCardElement | null = null;
@@ -110,6 +114,46 @@
 			.toFixed(2);
 	}
 
+	function useMyLocation() {
+		if (!('geolocation' in navigator)) {
+			locationNote = 'Geolocation is not supported by this browser';
+			return;
+		}
+
+		locating = true;
+		locationNote = '';
+
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				coords = {
+					lat: position.coords.latitude,
+					lng: position.coords.longitude
+				};
+				locationNote = 'Location saved for courier routing';
+				locating = false;
+			},
+			() => {
+				locationNote = 'Could not read your location. The address will be geocoded instead.';
+				locating = false;
+			},
+			{ enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+		);
+	}
+
+	async function resolveCoords(): Promise<{ lat: number; lng: number } | null> {
+		if (coords) return coords;
+		if (!address.trim()) return null;
+
+		const res = await geocodeAddress(address.trim());
+		if (res.data) {
+			coords = { lat: res.data.lat, lng: res.data.lng };
+			return coords;
+		}
+
+		locationNote = 'Address could not be located on the map. The courier will use the text address.';
+		return null;
+	}
+
 	function validate(): string {
 		if (deliveryType === 'delivery' && address.trim().length < 5) {
 			return 'Enter a valid delivery address';
@@ -136,11 +180,15 @@
 		loading = true;
 		step = 'Creating order...';
 
+		const point = deliveryType === 'delivery' ? await resolveCoords() : null;
+
 		const orderRes = await createOrder({
 			deliveryType,
 			address: deliveryType === 'delivery' ? address.trim() : undefined,
 			phone: phone.trim(),
 			paymentType,
+			lat: point?.lat,
+			lng: point?.lng,
 			items: items.map((item) => ({
 				productId: item.product.id,
 				quantity: item.quantity
@@ -271,6 +319,34 @@
 									placeholder="Street, building, apartment, city"
 									bind:value={address}
 								></textarea>
+							</div>
+						{/if}
+
+						{#if deliveryType === 'delivery'}
+							<div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+								<div class="flex items-center justify-between gap-3">
+									<div class="min-w-0">
+										<p class="text-sm font-medium text-gray-800">
+											{coords ? 'Delivery point saved' : 'Delivery point'}
+										</p>
+										<p class="text-xs text-gray-600">
+											{coords
+												? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`
+												: 'Share your location so the courier can build a route.'}
+										</p>
+									</div>
+									<button
+										type="button"
+										onclick={useMyLocation}
+										disabled={locating}
+										class="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+									>
+										{locating ? 'Locating...' : 'Use my location'}
+									</button>
+								</div>
+								{#if locationNote}
+									<p class="mt-2 text-xs text-gray-600">{locationNote}</p>
+								{/if}
 							</div>
 						{/if}
 

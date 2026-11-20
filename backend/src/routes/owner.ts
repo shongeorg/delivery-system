@@ -492,7 +492,7 @@ ownerRouter.delete('/expenses/:id', async (c) => {
 ownerRouter.get('/kitchen', async (c) => {
   const now = new Date();
 
-  const [allOrders, itemRows, allInventory] = await Promise.all([
+  const [allOrders, itemRows, allInventory, couriers] = await Promise.all([
     db.select().from(orders),
     db
       .select({
@@ -504,6 +504,7 @@ ownerRouter.get('/kitchen', async (c) => {
       .from(orderItems)
       .innerJoin(products, eq(orderItems.productId, products.id)),
     db.select().from(inventory),
+    db.select({ id: users.id, name: users.name, phone: users.phone }).from(users).where(eq(users.role, 'courier')),
   ]);
 
   const itemsByOrder = new Map<string, Array<{ name: string; quantity: number; price: string }>>();
@@ -521,6 +522,7 @@ ownerRouter.get('/kitchen', async (c) => {
     .sort((a, b) => new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime())
     .map((order) => ({
       ...order,
+      courier: couriers.find((courier) => courier.id === order.courierId) ?? null,
       items: itemsByOrder.get(order.id) ?? [],
       waitingMinutes: Math.max(
         0,

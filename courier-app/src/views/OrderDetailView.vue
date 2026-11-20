@@ -1,16 +1,21 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useOrderStore } from '../stores/order'
+import { useChatStore } from '../stores/chat'
+import { useSocketStore } from '../stores/socket'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 const orderStore = useOrderStore()
+const chatStore = useChatStore()
+const socketStore = useSocketStore()
 
 const order = ref(null)
 const loading = ref(true)
 const error = ref('')
 const updating = ref(false)
+const chatText = ref('')
 let refreshTimer = null
 
 const steps = [
@@ -49,12 +54,29 @@ async function loadOrder() {
 
 onMounted(async () => {
   await loadOrder()
+  chatStore.load(route.params.id)
+  socketStore.subscribe(`order:${route.params.id}`)
   refreshTimer = setInterval(loadOrder, 15000)
 })
 
 onUnmounted(() => {
   if (refreshTimer) clearInterval(refreshTimer)
+  socketStore.unsubscribe(`order:${route.params.id}`)
+  chatStore.reset()
 })
+
+async function sendChat() {
+  const value = chatText.value.trim()
+  if (!value) return
+  const sent = await chatStore.send(route.params.id, value)
+  if (sent) chatText.value = ''
+}
+
+function senderLabel(message) {
+  if (message.sender === 'courier') return 'You'
+  if (message.sender === 'admin') return 'Support'
+  return 'Customer'
+}
 
 async function updateStatus(newStatus) {
   updating.value = true
@@ -164,10 +186,17 @@ async function updateStatus(newStatus) {
                 <circle cx="12" cy="10" r="3" />
               </svg>
             </span>
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <p class="text-xs text-on-surface-variant">{{ order.deliveryType === 'delivery' ? 'Deliver to' : 'Pickup point' }}</p>
               <p class="font-medium text-on-surface">{{ order.address || 'Pickup at restaurant' }}</p>
             </div>
+            <router-link
+              v-if="order.deliveryType === 'delivery'"
+              :to="`/orders/${order.id}/map`"
+              class="btn btn-tonal min-h-11 shrink-0 px-4 py-2 text-sm"
+            >
+              Route
+            </router-link>
           </div>
 
           <div v-if="order.phone" class="flex items-center gap-3 p-5">
@@ -225,6 +254,45 @@ async function updateStatus(newStatus) {
         <div v-if="error" role="alert" class="rounded-2xl bg-error-container px-4 py-3 text-sm text-on-error-container">
           {{ error }}
         </div>
+
+        <section class="card overflow-hidden">
+          <div class="px-5 pb-2 pt-5">
+            <h2 class="text-sm font-semibold text-on-surface">Chat</h2>
+            <p class="mt-0.5 text-xs text-on-surface-variant">Customer and support see these messages live.</p>
+          </div>
+
+          <div class="max-h-64 space-y-2 overflow-y-auto px-5 py-2">
+            <p v-if="chatStore.loading" class="text-sm text-on-surface-variant">Loading messages…</p>
+            <p v-else-if="chatStore.messages.length === 0" class="text-sm text-on-surface-variant">No messages yet.</p>
+            <div
+              v-for="message in chatStore.messages"
+              :key="message.id"
+              class="flex"
+              :class="message.sender === 'courier' ? 'justify-end' : 'justify-start'"
+            >
+              <div
+                class="max-w-[80%] rounded-2xl px-4 py-2 text-sm"
+                :class="message.sender === 'courier' ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface'"
+              >
+                <p class="mb-0.5 text-[11px] opacity-70">{{ senderLabel(message) }}</p>
+                <p>{{ message.text }}</p>
+              </div>
+            </div>
+          </div>
+
+          <form class="flex items-center gap-2 border-t border-outline-variant px-4 py-3" @submit.prevent="sendChat">
+            <input
+              v-model="chatText"
+              class="field min-h-11 flex-1 py-2 text-sm"
+              placeholder="Write a message"
+              aria-label="Message"
+            />
+            <button type="submit" class="btn btn-filled min-h-11 px-4 py-2 text-sm" :disabled="chatStore.sending || !chatText.trim()">
+              {{ chatStore.sending ? 'Sending…' : 'Send' }}
+            </button>
+          </form>
+          <p v-if="chatStore.error" class="px-5 pb-3 text-sm text-error">{{ chatStore.error }}</p>
+        </section>
       </template>
     </main>
 
