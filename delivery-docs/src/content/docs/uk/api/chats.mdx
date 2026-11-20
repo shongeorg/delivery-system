@@ -1,0 +1,53 @@
+---
+title: Чати
+description: Чат замовлення та застарілий прямий чат
+---
+
+# Чати
+
+Існують дві родини чатів: чат замовлення, який використовує UI (`/chats/order/:orderId`), і застарілий прямий чат клієнт ↔ адмін (`/chats`, `/:id/messages`).
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/chats/order/:orderId` | учасник замовлення | Отримати або створити чат замовлення |
+| GET | `/chats/order/:orderId/messages` | учасник | Історія повідомлень |
+| POST | `/chats/order/:orderId/messages` | учасник | `{ text }` |
+| GET | `/chats` | автентифікована | Свої чати; owner/admin — усі |
+| POST | `/chats` | автентифікована | Чат без замовлення (legacy) |
+| GET | `/chats/:id/messages` | учасник | Legacy-історія |
+| POST | `/chats/:id/messages` | учасник | Legacy-повідомлення |
+
+## Чат замовлення
+
+`GET /chats/order/:orderId` — доступ: клієнт замовлення, призначений кур'єр або `owner`/`admin`. Створює чат при першому зверненні, якщо його ще немає. Повертає об'єкт чату.
+
+`GET /chats/order/:orderId/messages` — історія повідомлень як масив `{ id, sender, text, createdAt }`.
+
+`POST /chats/order/:orderId/messages`
+
+```json
+{ "text": "Hello" }
+```
+
+Відправник визначається автоматично: призначений кур'єр → `courier`, `owner`/`admin` → `admin`, клієнт замовлення → `user`. Повертає `201` зі створеним повідомленням і розсилає `chat_message` у канал `order:<orderId>`.
+
+Помилки: `404 Order not found`, `403 Forbidden`.
+
+## Legacy-чат
+
+`GET /chats` — клієнт бачить лише власні чати, `owner`/`admin` бачать усі.
+
+`POST /chats` — повертає чат поточного користувача, створюючи його за потреби.
+
+`GET /chats/:id/messages` — історія; доступ: власник чату або `owner`/`admin`.
+
+`POST /chats/:id/messages` із `{ "text": "…" }` — відправник `user` для власника чату та `admin` для `owner`/`admin`. Повертає `201`.
+
+Помилки: `404 Chat not found`, `403 Forbidden`.
+
+## Дивіться також
+
+- [Чат замовлення](/uk/tracking-chat/order-chat)
+- [Realtime](/uk/realtime/connection)

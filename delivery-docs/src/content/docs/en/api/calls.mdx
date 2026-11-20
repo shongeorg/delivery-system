@@ -1,0 +1,32 @@
+---
+title: Calls (WebRTC)
+description: Presence endpoint that powers WebRTC calling
+---
+
+# Calls (WebRTC)
+
+WebRTC signalling runs over the WebSocket; the REST API only exposes presence.
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/calls/presence` | authenticated | Support online status; with `orderId` — participant presence |
+
+## Presence
+
+`GET /calls/presence` — requires `Authorization: Bearer <accessToken>`.
+
+Without `orderId`:
+
+```json
+{ "supportOnline": true }
+```
+
+With `?orderId=…` (access: the order customer, the assigned courier, or `owner`/`admin`/`chef`):
+
+```json
+{ "supportOnline": true, "customerOnline": true, "courierOnline": false }
+```
+
+Errors: `404 Order not found`, `403 Forbidden`.

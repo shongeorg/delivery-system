@@ -1,0 +1,91 @@
+---
+title: Owner Panel Tables
+description: Staff salaries, payroll payments, expenses, settings, audit logs
+---
+
+# Owner Panel Tables
+
+## Staff Salaries
+
+Таблиця `staff_salaries` — умови оплати працівника.
+
+| Поле | Тип | Призначення |
+|------|-----|-------------|
+| `id` | uuid | Унікальний ідентифікатор |
+| `userId` | uuid (unique) | Посилання на `users.id` |
+| `baseSalary` | numeric | Базова зарплата |
+| `bonusPercentage` | numeric | Відсоток бонусу до замовлень |
+| `currency` | text | Валюта (USD, UAH, EUR) |
+| `updatedAt` | timestamp | Коли останнє оновлення |
+
+## Payroll Payments
+
+Таблиця `payroll_payments` — виплати: `type` = `salary` / `bonus`.
+
+| Поле | Тип | Призначення |
+|------|-----|-------------|
+| `id` | uuid | Унікальний ідентифікатор |
+| `userId` | uuid | Посилання на `users.id` |
+| `amount` | numeric | Сума виплати |
+| `type` | text | Тип: `salary`, `bonus` |
+| `period` | text | Період у форматі `YYYY-MM` |
+| `note` | text | Примітка |
+| `createdBy` | uuid | Хто створив запис |
+| `createdAt` | timestamp | Коли створено |
+
+## Expenses
+
+Таблиця `expenses` — витрати закладу.
+
+| Поле | Тип | Призначення |
+|------|-----|-------------|
+| `id` | uuid | Унікальний ідентифікатор |
+| `title` | text | Назва витрати |
+| `category` | text | Категорія |
+| `amount` | numeric | Сума |
+| `note` | text | Примітка |
+| `createdBy` | uuid | Хто створив запис |
+| `createdAt` | timestamp | Коли створено |
+
+## Restaurant Settings
+
+Таблиця `restaurant_settings` — один рядок налаштувань.
+
+| Поле | Тип | Призначення |
+|------|-----|-------------|
+| `id` | uuid | `main` (єдиний запис) |
+| `name` | text | Назва ресторану |
+| `phone` | text | Телефон |
+| `address` | text | Адреса |
+| `workingHours` | json | Години роботи |
+| `currency` | text | Валюта |
+| `taxRate` | numeric | Податкова ставка |
+| `deliveryFee` | numeric | Фікс. плата за доставку |
+| `logo` | text | URL логотипа |
+| `cover` | text | URL фонового зображення |
+| `updatedAt` | timestamp | Коли останнє оновлення |
+
+## Audit Logs
+
+Таблиця `audit_logs` — журнал змін.
+
+| Поле | Тип | Призначення |
+|------|-----|-------------|
+| `id` | uuid | Унікальний ідентифікатор |
+| `userId` | uuid | Хто здійснив дію |
+| `action` | text | Яка дія (create, update, delete) |
+| `entity` | text | Яка суть (product, order, expense, ...) |
+| `entityId` | uuid | ID зміненої сутності |
+| `details` | json | Додаткова інформація |
+| `createdAt` | timestamp | Коли зміна |
+
+## Financial Calculation
+
+`GET /owner/finances` розраховує:
+
+```
+revenue = сума totalPrice замовлень зі status != 'cancelled' І paymentStatus = 'paid'
+netProfit = revenue − payroll(period) − expenses(period)
+```
+
+Тобто готівкові замовлення з `paymentStatus = pending` у дохід не потрапляють, поки їх не позначено оплаченими (окремого ендпоінта для цього немає).

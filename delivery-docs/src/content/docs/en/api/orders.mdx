@@ -1,0 +1,109 @@
+---
+title: Orders
+description: Order creation, status transitions, tracking and cancellation
+---
+
+# Orders
+
+Creating an order clears the cart and broadcasts `new_order`. Status transitions follow the matrix from [Order Lifecycle](/en/order-lifecycle/statuses).
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/orders` | owner/admin/chef/courier | All orders (array) with `items`, `user`, `courier` |
+| GET | `/orders/my` | authenticated | Orders of the current user |
+| GET | `/orders/:id` | owner or staff/courier | A single order with its items |
+| GET | `/orders/:id/tracking` | owner, assigned courier, staff | `{ order, client, courier, location }` |
+| POST | `/orders` | authenticated | `{ deliveryType, address?, phone, paymentType, lat?, lng?, items[] }` |
+| PATCH | `/orders/:id/status` | staff or courier | `{ status }`, transitions from the matrix |
+| PUT | `/orders/:id/location` | courier assigned to the order | `{ lat, lng }` |
+| POST | `/orders/:id/cancel` | owner or owner/admin | Only `created`/`paid` |
+
+## List Orders
+
+`GET /orders` — access: `owner`, `admin`, `chef`, `courier`. Returns an array of orders; the optional query `?status=ready` filters by status. Each order is enriched with `items`, `user` and `courier`.
+
+`GET /orders/my` — the authenticated user's own orders with the same enrichment.
+
+## Order Details
+
+`GET /orders/:id` — the order owner, or any `owner`/`admin`/`chef`/`courier` role. Returns the order plus an `items` array (each item carries its `product`). Errors: `404 Order not found`, `403 Forbidden`.
+
+## Tracking
+
+`GET /orders/:id/tracking` — the customer, the assigned courier, or staff:
+
+```json
+{
+  "order": {
+    "id": "…",
+    "status": "on_the_way",
+    "deliveryType": "delivery",
+    "address": "Khreshchatyk 1",
+    "phone": "+380000000000",
+    "totalPrice": "19.98",
+    "paymentType": "card",
+    "paymentStatus": "paid",
+    "createdAt": "…",
+    "items": [ … ]
+  },
+  "client": { "lat": 50.447, "lng": 30.522 },
+  "courier": { "id": "…", "name": "Bob", "phone": "+380000000000" },
+  "location": { "lat": 50.45, "lng": 30.52, "updatedAt": "…" }
+}
+```
+
+`client`, `courier` and `location` are `null` when absent.
+
+## Create Order
+
+`POST /orders`
+
+```json
+{
+  "deliveryType": "delivery",
+  "address": "Khreshchatyk 1",
+  "phone": "+380000000000",
+  "paymentType": "card",
+  "lat": 50.447,
+  "lng": 30.522,
+  "items": [{ "productId": "…", "quantity": 2 }]
+}
+```
+
+`deliveryType` — `pickup` or `delivery`; `paymentType` — `card` or `cash`; `items` — at least one entry. The order is created with status `created` and `paymentStatus: pending`; the total is computed from the product prices. The cart is cleared and `new_order` is broadcast.
+
+Response `201` — the created order. Errors: `400 Some products not found`.
+
+## Update Status
+
+`PATCH /orders/:id/status` — access: `owner`, `admin`, `chef`, `courier`.
+
+```json
+{ "status": "cooking" }
+```
+
+`status` is one of `created`, `paid`, `cooking`, `ready`, `on_the_way`, `delivered`, `cancelled`. A `courier` may only set `on_the_way` and `delivered`; setting `on_the_way` assigns that courier to the order. A disallowed transition returns `409`, an order already accepted by another courier returns `409`, and an order assigned to another courier returns `403`.
+
+On success the change is broadcast as `order_updated`, both globally and to `order:<id>`.
+
+## Courier Location
+
+`PUT /orders/:id/location` — access: `courier`, and only the courier assigned to the order.
+
+```json
+{ "lat": 50.45, "lng": 30.52 }
+```
+
+Saves the position and broadcasts `courier_location` to `order:<id>`. This is the HTTP fallback for the `courier_location_update` WebSocket message; both share `src/services/tracking.ts`.
+
+## Cancel Order
+
+`POST /orders/:id/cancel` — access: the order owner or `owner`/`admin`. Only orders with status `created` or `paid` can be cancelled; any other status returns `400`. Returns the updated order and broadcasts `order_cancelled`. Errors: `403 Forbidden`.
+
+## Further Reading
+
+- [Order Lifecycle](/en/order-lifecycle/statuses)
+- [Payments](/en/api/payments)
+- [Realtime](/en/realtime/connection)

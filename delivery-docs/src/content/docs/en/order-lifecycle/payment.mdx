@@ -1,0 +1,37 @@
+---
+title: Payment Flow
+description: Order payment flow and Stripe integration
+---
+
+# Payment Flow
+
+## Card Payment
+
+```mermaid
+sequenceDiagram
+  participant C as Customer
+  participant API
+  participant S as Stripe
+
+  C->>API: POST /orders (paymentType=card|cash)
+  alt card
+    C->>API: POST /payments/create-intent { orderId }
+    API->>S: PaymentIntent
+    API-->>C: clientSecret
+    C->>S: confirmCardPayment
+    S-->>C: succeeded
+    C->>API: POST /payments/confirm { orderId, paymentIntentId }
+    API->>API: status=paid, paymentStatus=paid
+  else cash
+    C->>C: статус лишається created / pending
+  end
+```
+
+- `POST /payments/webhook` handles `payment_intent.succeeded` and `.failed` regardless of browser.
+- Cash: `paymentStatus` stays `pending`; no separate "mark as paid" endpoint. Such orders don't count in owner revenue (only `paid`).
+
+## Cash Payment
+
+- Order created with `paymentStatus: pending`.
+- No separate endpoint to mark as paid.
+- Revenue in owner panel counts only `paymentStatus = paid`.

@@ -1,0 +1,59 @@
+---
+title: Role Permissions
+description: What each role can see and do
+---
+
+# Role Permissions
+
+Authorization is header-based: every protected request carries `Authorization: Bearer <accessToken>`. `authMiddleware` puts `userId` and `userRole` into the request context, and `allowRoles([...])` restricts an endpoint to a set of roles (`backend/src/middleware/auth.ts`).
+
+## Roles
+
+| Role | Purpose |
+|------|---------|
+| `customer` | Storefront, cart, own orders, tracking, order chat |
+| `courier` | Delivery queue, acceptance, route, location, chat, delivered |
+| `chef` | Kitchen queue, statuses `created → cooking → ready`, inventory, recipes |
+| `owner` | Everything, including staff, payroll, finances, settings, audit |
+| `admin` | Same as owner except changing the owner; enters both the owner panel and the kitchen |
+
+## What each role can see and do
+
+| Role | Sees | Can change |
+|------|------|------------|
+| `customer` | Own orders, tracking, chat | Create an order, cancel before `paid`, write in chat |
+| `chef` | All orders (`GET /orders`), kitchen | `created → cooking → ready`, `cancelled` |
+| `courier` | All deliveries (list of `ready` + `on_the_way`) | Accept (`on_the_way`), complete (`delivered`), location, chat |
+| `owner` / `admin` | Everything | Any allowed transition, finances, staff |
+
+Note: `GET /orders` returns **all** orders — it is not filtered by courier. The courier app filters on the client (`deliveryType === 'delivery'`, status `ready` / `on_the_way` / `delivered`), so two couriers see the same "available" list and the backend decides who tapped Accept first.
+
+## Who sets each status
+
+| Status | Set by |
+|--------|--------|
+| `created` | The system (`POST /orders`) |
+| `paid` | `POST /payments/confirm` or the Stripe webhook |
+| `cooking` | `chef`, `admin`, `owner` |
+| `ready` | `chef`, `admin`, `owner` |
+| `on_the_way` | Only `courier` |
+| `delivered` | The assigned `courier`, or staff |
+| `cancelled` | Customer (before `paid`), `owner`/`admin` (before `on_the_way`) |
+
+## Enforced rules
+
+- Status transitions are validated against `allowedTransitions` in `backend/src/routes/orders.ts`. Any other transition returns `409`.
+- A courier may only set `on_the_way` and `delivered`, only from `ready`, and only if no other courier is assigned:
+  - `409 Order already accepted by another courier` — a `courierId` is already set.
+  - `403 Order is assigned to another courier` — the order belongs to someone else.
+- Cancellation uses a separate endpoint, `POST /orders/:id/cancel`, not the transition matrix: a customer can cancel only their own order in `created` or `paid`. After `cooking` this endpoint returns `400`.
+
+## Error codes
+
+| Code | Meaning |
+|------|---------|
+| `401` | Missing or invalid token |
+| `403` | Role not permitted, or order assigned to another courier |
+| `409` | Transition not allowed, or order already taken |
+
+See also: [Statuses & Transitions](/en/order-lifecycle/statuses), [Cancellation](/en/order-lifecycle/cancellation), [Courier Rules](/en/order-lifecycle/courier-rules).

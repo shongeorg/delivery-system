@@ -1,0 +1,34 @@
+---
+title: Verification Results
+description: What was actually exercised while verifying tracking and chat
+---
+
+# Verification Results
+
+These checks were actually performed against a running backend and a seeded database.
+
+| Area | What was checked | Result |
+|------|------------------|--------|
+| REST | Courier accepts an order → `courierId` is filled | OK |
+| REST | A second courier tries to accept the same order → `409` | OK |
+| REST | `PUT /orders/:id/location` | `200` |
+| REST | `GET /orders/:id/tracking` returns the customer point and the courier | OK |
+| REST | Chat `POST` returns `201` and the history is returned | OK |
+| WebSocket | Owner subscribed to `order:<id>`; courier sent a location → owner received `courier_location` | OK |
+| WebSocket | A chat message → `chat_message` received | OK |
+| Browser | Checkout with "Use my location" | geolocation `denied` in the test Chrome, so address geocoding fired instead |
+| Browser | Tracking page | showed the timeline, map, "Courier position updated" and the courier card |
+| Browser | Chat message | appeared for both the customer and the courier |
+| Browser | Owner panel in the kitchen | showed "Courier: Curier 1" |
+| OSRM | Availability check | `code: Ok`, 27.7 km / 38 min for the test pair of points |
+
+## What was not verified
+
+- The **route in the browser was not verified**, because without geolocation there is no start point and the route is not built.
+
+## Related
+
+- [Data Flow](/en/tracking-chat/data-flow)
+- [Tracking Endpoints](/en/tracking-chat/endpoints)
+- [Order Chat](/en/tracking-chat/order-chat)
+- [Client Behaviour & Fallbacks](/en/realtime/clients-fallbacks)

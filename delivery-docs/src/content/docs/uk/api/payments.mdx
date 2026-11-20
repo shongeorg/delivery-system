@@ -1,0 +1,62 @@
+---
+title: Платежі
+description: Створення, підтвердження та вебхук платежів Stripe
+---
+
+# Платежі
+
+Оплата карткою проходить через Stripe. `POST /payments/create-intent` і `POST /payments/confirm` вимагають `Authorization: Bearer <accessToken>`; вебхук автентифікується підписом Stripe.
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| POST | `/payments/create-intent` | власник замовлення | Створює PaymentIntent, повертає `clientSecret` |
+| POST | `/payments/confirm` | власник замовлення | Перевіряє PaymentIntent і ставить `paid` |
+| POST | `/payments/webhook` | підпис Stripe | Обробляє `payment_intent.succeeded` / `.failed` |
+
+## Створити PaymentIntent
+
+`POST /payments/create-intent`
+
+```json
+{ "orderId": "…" }
+```
+
+Платити може лише власник замовлення; замовлення, яке вже `paid`, повертає `400 Order already paid`. Сума — це підсумок замовлення в центах, валюта `usd`.
+
+Відповідь `200`:
+
+```json
+{ "clientSecret": "…", "paymentIntentId": "…" }
+```
+
+Помилки: `404 Order not found`, `403 Forbidden`, `400 Order already paid`.
+
+## Підтвердити платіж
+
+`POST /payments/confirm`
+
+```json
+{ "orderId": "…", "paymentIntentId": "…" }
+```
+
+Сервер витягує PaymentIntent, перевіряє, що його `metadata.orderId` збігається із замовленням, а статус — `succeeded`, після чого ставить замовленню `paymentStatus: paid` і `status: paid`.
+
+Відповідь `200`: `{ "success": true, "order": { … } }`.
+
+Помилки: `404 Order not found`, `403 Forbidden`, `400 Payment does not match order`, `400 Payment not completed`.
+
+## Вебхук
+
+`POST /payments/webhook` — викликається Stripe і перевіряється через заголовок `stripe-signature` та `STRIPE_WEBHOOK_SECRET`.
+
+- `payment_intent.succeeded` — ставить `paymentStatus: paid` і `status: paid`, далі сповіщає клієнта.
+- `payment_intent.payment_failed` — ставить `paymentStatus: failed`.
+
+Повертає `{ "received": true }`. Невалідний підпис повертає `400`.
+
+## Дивіться також
+
+- [Оплата](/uk/order-lifecycle/payment)
+- [Замовлення](/uk/api/orders)

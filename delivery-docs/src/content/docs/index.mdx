@@ -1,0 +1,47 @@
+---
+title: Food Delivery System
+description: Complete documentation for the Food Delivery System
+template: splash
+hero:
+  tagline: Customer storefront, kitchen, courier PWA and owner dashboard — five apps, one API.
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: English
+      link: /en/introduction
+      icon: right-arrow
+    - text: Українська
+      link: /uk/introduction
+      icon: right-arrow
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Explore the documentation
+
+<CardGrid stagger>
+  <Card title="Introduction" icon="open-book">
+    System overview, roles, applications and documentation map. [Read the guide](/en/introduction)
+  </Card>
+  <Card title="Architecture" icon="puzzle">
+    Components, technologies and data flows. [Read the guide](/en/architecture)
+  </Card>
+  <Card title="Quick Start" icon="rocket">
+    Run all five applications locally. [Read the guide](/en/quick-start)
+  </Card>
+  <Card title="Backend API" icon="setting">
+    Every endpoint with roles and payloads. [Read the guide](/en/api/auth)
+  </Card>
+  <Card title="Data Model" icon="document">
+    ER diagram and all 22 tables. [Read the guide](/en/data-model/er)
+  </Card>
+  <Card title="Realtime" icon="laptop">
+    WebSocket protocol, channels and fallbacks. [Read the guide](/en/realtime/connection)
+  </Card>
+  <Card title="Tracking & Chat" icon="location">
+    Geolocation, geocoding, route and order chat. [Read the guide](/en/tracking-chat/data-flow)
+  </Card>
+  <Card title="Development" icon="pencil">
+    Testing, environment variables and database commands. [Read the guide](/en/dev/testing)
+  </Card>
+</CardGrid>

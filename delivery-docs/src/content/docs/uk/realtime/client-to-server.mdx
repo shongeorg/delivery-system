@@ -1,0 +1,15 @@
+---
+title: Клієнт → Сервер
+description: Повідомлення від клієнта до WebSocket сервера
+---
+
+# Клієнт → Сервер
+
+| `type` | Поля | Правила |
+|--------|------|---------|
+| `auth` | `token` | JWT access. Відповідь `{ type: 'auth', status: 'success' \| 'error' }` |
+| `subscribe` | `channel` | Потрібна автентифікація. Для `order:<id>` перевіряється, що клієнт — власник замовлення, призначений кур'єр або роль `owner`/`admin`/`chef` |
+| `unsubscribe` | `channel` | Прибирає канал |
+| `courier_location_update` | `orderId`, `lat`, `lng` | Тільки роль `courier`; замовлення мусить бути призначене цьому кур'єру; координати валідуються |
+
+Невідомий тип → `{ type: 'error', message: 'Unknown message type' }`.

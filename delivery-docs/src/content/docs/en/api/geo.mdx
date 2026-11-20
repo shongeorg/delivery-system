@@ -1,0 +1,34 @@
+---
+title: Geo
+description: Address geocoding via Nominatim
+---
+
+# Geo
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| POST | `/geo/geocode` | authenticated | `{ address }` → `{ lat, lng, displayName }`; `404` if not found, `502` if Nominatim is unavailable |
+
+## Geocode
+
+`POST /geo/geocode`
+
+```json
+{ "address": "Khreshchatyk 1, Kyiv" }
+```
+
+`address` — at least 3 characters. The address is geocoded through Nominatim; results (including misses) are cached in memory.
+
+Response `200`:
+
+```json
+{ "lat": 50.447, "lng": 30.522, "displayName": "Khreshchatyk Street, Kyiv, Ukraine" }
+```
+
+Errors: `404 Address not found`, `502 Geocoding service unavailable`, `502 Geocoding request failed`.
+
+## Further Reading
+
+- [Tracking & Chat](/en/tracking-chat/data-flow)

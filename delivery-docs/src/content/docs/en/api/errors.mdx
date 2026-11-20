@@ -1,0 +1,34 @@
+---
+title: Error Codes
+description: Error response shape and HTTP status codes
+---
+
+# Error Codes
+
+Errors are JSON objects carrying an `error` message and an HTTP `code`:
+
+```json
+{ "error": "Order not found", "code": 404 }
+```
+
+## Status Codes
+
+| Code | When |
+|------|------|
+| 200 | Success |
+| 201 | Created (order, message) |
+| 400 | Invalid body or disallowed state |
+| 401 | Missing or expired token |
+| 403 | Wrong role or someone else's resource |
+| 404 | Not found |
+| 409 | Status-transition conflict, or an order already accepted by another courier |
+| 502 | External service (Nominatim) unavailable |
+
+## Notes
+
+- Unhandled errors return `500 Internal server error`.
+- Unknown routes return `404 Not found`.
+
+## Further Reading
+
+- [Authentication](/en/api/auth)

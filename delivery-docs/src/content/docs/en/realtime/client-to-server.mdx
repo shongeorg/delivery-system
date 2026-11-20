@@ -1,0 +1,15 @@
+---
+title: Client → Server Messages
+description: Messages sent from client to WebSocket server
+---
+
+# Client → Server Messages
+
+| `type` | Fields | Rules |
+|--------|--------|-------|
+| `auth` | `token` | JWT access. Response `{ type: 'auth', status: 'success' \| 'error' }` |
+| `subscribe` | `channel` | Requires auth. For `order:<id>`, server verifies client is order owner, assigned courier, or role `owner`/`admin`/`chef` |
+| `unsubscribe` | `channel` | Removes channel |
+| `courier_location_update` | `orderId`, `lat`, `lng` | Only `courier` role; order must be assigned to this courier; coordinates validated |
+
+Unknown type → `{ type: 'error', message: 'Unknown message type' }`.

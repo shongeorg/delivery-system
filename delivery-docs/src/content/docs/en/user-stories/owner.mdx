@@ -1,0 +1,40 @@
+---
+title: Owner Panel
+description: User stories for the owner panel (ower-panel)
+---
+
+# Owner Panel
+
+The owner panel (`ower-panel`, port 3034) is the management back office. The `admin` role enters the same panel: its API allows `owner` and `admin`, while the UI guard (`src/components/RoleGuard.tsx`) admits only `owner`.
+
+## US-17. Dashboard ✅
+
+`/` shows revenue (today / week / month), net profit, active orders, average order value, staff, top products and low stock. Data refreshes every 15 s (`refetchInterval: 15000`).
+
+## US-18. Staff and payroll ✅
+
+- `/staff` — 33 accounts; `/staff/:id` — role, blocking, base salary, bonus, currency.
+- `/payroll` — payments and bonuses.
+
+Every change is written to `audit_logs`.
+
+## US-19. Finances ✅
+
+`/finances` — revenue (only `paid` orders), payroll, expenses, net profit, a daily chart, and creation/deletion of expenses.
+
+## US-20. Kitchen and couriers ✅
+
+`/kitchen` — the queue by status, waiting time, and the **assigned courier** (name, phone) for `on_the_way` orders.
+
+Limitation: there is no live courier map in the owner panel. The position is available via `GET /orders/:id/tracking` (the `owner` role is allowed), but the UI does not display it.
+
+## US-21. Settings and audit ✅
+
+- `/settings` — name, phone, address, hours, currency, tax, delivery fee.
+- `/audit-logs` — the action log.
+
+## US-22. Chat with customers 🟡
+
+The API lets `owner`/`admin` read and write in an order chat, but there is no dedicated screen for it in the owner panel.
+
+See also: [Cross-cutting Scenarios](/en/user-stories/e2e), [Gaps & Limitations](/en/user-stories/gaps).

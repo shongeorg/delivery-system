@@ -1,0 +1,32 @@
+---
+title: Сервер → Клієнт
+description: Події, які сервер посилає клієнтам
+---
+
+# Сервер → Клієнт
+
+| `type` | Дані | Кому |
+|--------|------|----------|
+| `connected` | `clientId` | Щойно підключеному |
+| `auth` | `status` | Відповідь на автентифікацію |
+| `subscribed` / `unsubscribed` | `channel` | Відповідь на підписку |
+| `new_order` | замовлення | Усі підключені (глобальний broadcast) |
+| `order_updated` | замовлення | Канал `order:<id>` + глобальний broadcast |
+| `order_cancelled` | замовлення | Глобальний broadcast |
+| `courier_location` | `orderId`, `courierId`, `lat`, `lng`, `updatedAt` | Канал `order:<id>` + ролі `owner` та `admin` |
+| `chat_message` | повідомлення | Канал `order:<id>` |
+| `error` | `message` | Адресовано відправнику |
+
+### Події для WebRTC-сигналізації (дозвінок)
+
+| `type` | Дані | Напрямок |
+|--------|------|-----------|
+| `call_invite` | `callId`, `orderId`, `mode`, `from` | Сервер → отримувач |
+| `call_ringing` | `callId`, `to` | Сервер → дзвонильник |
+| `call_accept` | `callId` | Біля‑біля |
+| `call_decline` | `callId` | Біля‑біля |
+| `call_end` | `callId`, `from` | Біля‑біля |
+| `webrtc_offer` | `callId`, `from`, `sdp` | Біля‑біля |
+| `webrtc_answer` | `callId`, `from`, `sdp` | Біля‑біля |
+| `ice_candidate` | `callId`, `from`, `candidate` | Біля‑біля |
+| `call_unavailable` | `callId`, `reason` | Сервер → дзвонильник |

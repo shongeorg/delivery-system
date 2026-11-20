@@ -1,0 +1,11 @@
+---
+title: Cascades
+description: Foreign key cascade rules
+---
+
+# Cascades
+
+- `refresh_tokens`, `cart_items`, `messages`, `courier_locations`, `staff_salaries`, `payroll_payments` — `ON DELETE CASCADE` від батьківського запису.
+- `order_items` — `ON DELETE CASCADE` від `orders`.
+- `chats` — `ON DELETE CASCADE` від `orders` (видалення замовлення видаляє чат).
+- `orders.userId`, `orders.courierId`, `products.createdBy` — без каскаду; видалення користувача з історією замовлень БД не пропустить.

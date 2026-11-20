@@ -1,0 +1,31 @@
+---
+title: Staff & Payroll
+description: Staff management, salaries, and payroll
+---
+
+# Staff & Payroll
+
+## Staff Endpoint
+
+`GET /owner/staff` — акаунти з умовами оплати (`search`, `role`).
+
+## Edit Staff
+
+`PATCH /owner/staff/:id` — Роль, ім'я, телефон, блокування.
+
+## Salaries
+
+`PUT /owner/staff/:id/salary` — `{ baseSalary, bonusPercentage, currency }`.
+
+## Payroll Overview
+
+`GET /owner/payroll` — Виплати й підсумки (`period=YYYY-MM`).
+
+## Create Payroll Payment
+
+`POST /owner/payroll` — `{ userId, amount, type, period?, note? }`.
+
+## Payroll Tables
+
+- `staff_salaries`: base salary, bonus percentage, currency.
+- `payroll_payments`: history of salary/bonus payments.

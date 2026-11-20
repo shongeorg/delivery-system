@@ -1,0 +1,172 @@
+---
+title: Вступ
+description: Огляд системи доставки їжі
+---
+
+# Вступ
+
+Повний цикл доставки їжі: магазин клієнта, панель кухні, PWA кур'єр і дашборд власника. П'ять незалежних застосунків навколо одного REST/WebSocket API.
+
+> `project.*.spec.md` — початкові проєктні специфікації. Вони описують задум, а не поточний код. Активний стан описано тут і в `docs/`. Де специфікація розходиться з кодом — правий код.
+
+## Застосунки
+
+| Застосунок | Стек | Порт | Роль |
+|-------------|-------|------|------|
+| `backend` | Node.js, Hono, Drizzle ORM, Neon PostgreSQL, Zod, JWT, ws, Stripe | 3000 | REST API, WebSocket, платежі, геокодування |
+| `frontend` | SvelteKit 5 (runes), Tailwind 4, Leaflet, Stripe.js | 3031 | Вітрина, кошик, checkout, трекінг замовлення, чат |
+| `courier-app` | Vue 3.5, Pinia, vue-router, Vite 7, Leaflet, PWA | 3032 | Черга доставок, маршрут до клієнта, чат |
+| `сhef-panel` | React 18, Vite, TanStack Query | 3033 | Кухня: замовлення, рецепти, склад |
+| `ower-panel` | React 18, Vite, TanStack Query, Recharts | 3034 | Власник: дашборд, персонал, зарплати, фінанси, кухня, налаштування, аудит |
+
+`сhef-panel` починається з кириличної `с` (U+0441), `ower-panel` — з латинської `o`.
+
+## Ролі
+
+| Роль | Може |
+|------|------|
+| `customer` | Каталог, кошик, свої замовлення, трекінг, чат замовлення |
+| `courier` | Список готових доставок, прийняття, маршрут, локація, чат, доставлено |
+| `chef` | Черга кухні, статуси `created → cooking → ready`, склад, рецепти |
+| `owner` | Всі: кухня, персонал, зарплати, фінанси, налаштування, аудит |
+| `admin` | Те саме, що owner; окремої admin-панелі немає — користується owner-панеллю, тож має доступ і в owner-панель, і в кухню |
+
+## Швидкий старт
+
+```bash
+# 1. Бекенд
+cd backend
+npm install
+cp .env.example .env          # POSTGRES_URL, JWT_SECRET, JWT_REFRESH_SECRET, STRIPE_*
+npm run db:push
+npm run db:seed
+npm run dev                   # http://localhost:3000
+
+# 2. Клієнт
+cd frontend
+npm install
+cp .env.example .env          # PUBLIC_API_URL, PUBLIC_STRIPE_PUBLISHABLE_KEY
+npm run dev                   # http://localhost:3031
+
+# 3. Кур'єр
+cd courier-app && npm install && npm run dev     # http://localhost:3032
+
+# 4. Кухня
+cd сhef-panel && npm install && npm run dev      # http://localhost:3033
+
+# 5. Власник
+cd ower-panel && npm install && npm run dev      # http://localhost:3034
+```
+
+Кореневого `package.json` немає: кожен застосунок ставиться й запускається зі своєї теки. CORS у `backend/src/index.ts` дозволяє 3000, 3031, 3032, 3033, 3034.
+
+## Огляд архітектури
+
+```mermaid
+flowchart LR
+  C[frontend 3031<br/>customer] -->|REST + WS| API
+  K[сhef-panel 3033<br/>kitchen] -->|REST, polling 5s| API
+  V[courier-app 3032<br/>courier PWA] -->|REST + WS| API
+  O[ower-panel 3034<br/>owner] -->|REST, polling 10-30s| API
+  API[Hono API + ws<br/>:3000] --> DB[(Neon PostgreSQL)]
+  API --> S[Stripe]
+  API --> N[Nominatim geocoding]
+  V --> R[OSRM routing]
+  C --> T[OpenStreetMap tiles]
+  V --> T
+```
+
+Деталі: [Архітектура](/uk/architecture)
+
+## Життєвий цикл замовлення
+
+```mermaid
+stateDiagram-v2
+  [*] --> created
+  created --> paid: Stripe confirm
+  created --> cooking: chef accepts
+  paid --> cooking
+  cooking --> ready
+  ready --> on_the_way: courier accepts (courierId assigned)
+  on_the_way --> delivered: assigned courier
+  created --> cancelled
+  paid --> cancelled
+  cooking --> cancelled
+  ready --> cancelled
+  on_the_way --> cancelled
+  delivered --> [*]
+  cancelled --> [*]
+```
+
+Переходи валідуються на бекенді (`allowedTransitions` у `backend/src/routes/orders.ts`); кур'єр може ставити лише `on_the_way` і `delivered`, і лише для замовлення, яке ще нікому не призначене. Деталі: [Життєвий цикл замовлення](/uk/order-lifecycle/statuses)
+
+## Трекінг і чат
+
+- Клієнт вказує точку доставки на checkout: `navigator.geolocation`, а якщо вона недоступна — бекенд геокодить адресу через Nominatim (`POST /geo/geocode`). Точка зберігається в `orders.lat/lng`.
+- Кур'єр приймає замовлення → `orders.courierId`. Позиція кур'єра пишеться в `courier_locations` через WS (`courier_location_update`) або HTTP (`PUT /orders/:id/location`).
+- Клієнт бачить кур'єра на `/orders/:id`: карта, маркер, лінія, статус-таймлайн, телефон і чат. Дані — `GET /orders/:id/tracking` + WS-канал `order:<id>` + полінг 5 с.
+- Кур'єр на `/orders/:id/map` бачить маршрут до клієнта (OSRM) з відстанню й ETA.
+- Чат прив'язаний до замовлення: клієнт ↔ кур'єр ↔ адмін/власник (`/chats/order/:orderId/messages`).
+
+Деталі: [Трекінг і чат](/uk/tracking-chat/data-flow), [Realtime](/uk/realtime/connection)
+
+## WebSocket
+
+`ws://localhost:3000/ws`, конверт `{ "type": ..., "data": ... }`.
+
+| Клієнт → Сервер | Мета |
+|-----------------|------|
+| `auth` | JWT access token |
+| `subscribe` / `unsubscribe` | Канал `order:<id>` (перевірка доступу) або `orders` |
+| `courier_location_update` | `{ orderId, lat, lng }` від кур'єра |
+
+| Сервер → Клієнт | Коли |
+|-----------------|------|
+| `new_order`, `order_updated`, `order_cancelled` | Створення / зміна статусу / скасування |
+| `courier_location` | Нова позиція кур'єра (канал замовлення + ролі owner/admin) |
+| `chat_message` | Нове повідомлення в чаті замовлення |
+
+## Посилання на API
+
+Повний список: [Довідник API](/uk/api/auth). Інтерактивна документація — `http://localhost:3000/api/docs`.
+
+Ключові групи: `/auth`, `/users`, `/products`, `/categories`, `/tags`, `/orders`, `/cart`, `/payments`, `/chats`, `/geo`, `/inventory`, `/reviews`, `/owner`, `/calls`.
+
+## Дані
+
+22 таблиці у `backend/src/db/schema.ts`, включаючи `orders.courierId/lat/lng`, `courier_locations`, `chats.orderId`. Схема й призначення кожної таблиці: [Модель даних](/uk/data-model/er).
+
+## Тестові акаунти
+
+| Email | Пароль | Роль |
+|-------|----------|------|
+| `owner@test.com` | `owner123` | owner |
+| `admin@test.com` | `admin123` | admin |
+| `cura1@mail.com` | `cura123` | courier |
+| `cura2@mail.com` | `cura123` | courier |
+
+## Структура документації
+
+| Файл | Про |
+|------|-----|
+| [Архітектура](/uk/architecture) | Компоненти, технології, потоки даних, авторизація, env |
+| [Модель даних](/uk/data-model/er) | ER-діаграма та 22 таблиці |
+| [Життєвий цикл замовлення](/uk/order-lifecycle/statuses) | Статуси, матриця переходів, права ролей, оплата |
+| [Realtime](/uk/realtime/connection) | Протокол WebSocket, канали, фолбеки |
+| [Трекінг і чат](/uk/tracking-chat/data-flow) | Геолокація, геокодування, маршрут, чат замовлення |
+| [User Stories](/uk/user-stories/customer) | Сценарії за ролями, що реалізовано, що ні |
+| [Довідник API](/uk/api/auth) | Всі ендпоінти з правами |
+| [Frontend (SvelteKit)](/uk/apps/frontend) | Клієнтський застосунок |
+| [Courier App (Vue PWA)](/uk/apps/courier) | Courier app |
+| [Chef Panel (React)](/uk/apps/chef) | Кухня |
+| [Owner Panel (React)](/uk/apps/owner) | Owner Panel |
+| [Розробка](/uk/dev/testing) | Тестування, змінні середовища, команди БД, відомі проблеми |
+
+## Відомі обмеження
+
+- **Геолокація у тестовому браузері.** У середовищі тестування Chrome має `denied` для geolocation, тому маршрут кур'єра будується без стартової точки. Код обробляє це чесно (кнопка "Share my location" неактивна, карта показує адресу), але в такому браузері OSRM-маршрут не намалюється.
+- **Готівка.** Замовлення з `paymentType: cash` створюється з `paymentStatus: pending` і не має окремого ендпоінта "оплачено готівкою"; дохід у фінансах рахується лише за `paid`.
+- **Адмін-панелі немає.** Роль `admin` користується owner-панеллю (її API дозволяє `owner` і `admin`, UI-гард — лише `owner`).
+- **OpenAPI.** Документовані лише частина маршрутів; `/orders`, `/chats`, `/geo`, `/owner` в OpenAPI не описано.
+- **Тести не герметичні.** `backend` Vitest ходить у живий `localhost:3000` і пише в БД; у `src/tests/api.test.ts` є застаріле очікування масиву для `/products`.
+- **Чати поза замовленням.** Старі `/chats` (клієнт ↔ адмін) залишені в API, але UI не використовує їх; робочий чат — тільки `/chats/order/:orderId`.

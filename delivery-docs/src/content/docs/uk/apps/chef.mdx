@@ -1,0 +1,57 @@
+---
+title: Chef Panel (React)
+description: Кухонний застосунок — маршрути, TanStack Query, рольовий захист і обробка замовлень
+---
+
+# Chef Panel (React)
+
+Кухонна панель: кухарі бачать нові замовлення й переводять їх через готування до готовності. Побудована на **React 18**, **react-router**, **TanStack Query** та **axios** зі стилями Tailwind. Працює на порту `3033`.
+
+## Стек, порт, роль
+
+| Стек | Порт | Роль |
+|------|------|------|
+| React 18 + react-router + TanStack Query + axios + Tailwind 3 | `3033` | Кухня: черга замовлень, рецепти, склад (роли `owner`, `admin`, `chef`) |
+
+## Маршрути
+
+Описані в `src/App.tsx`:
+
+| Маршрут | Екран |
+|---------|-------|
+| `/login` | Вхід |
+| `/` (`index`) | Дашборд |
+| `/orders` | Дошка замовлень кухні |
+| `/recipes` | Рецепти / список страв |
+| `/inventory` | Керування складом |
+
+Усе під `/` загорнуто в `RoleGuard allowedRoles={['owner', 'admin', 'chef']}` і рендериться в спільному `Layout` (бокове меню Dashboard / Orders / Recipes / Inventory).
+
+## Керування станом
+
+- **TanStack Query** зберігає ввесь серверний стан. `src/hooks/useOrders.ts` визначає `useOrders` (`refetchInterval: 5000`), `useOrder` і `useUpdateOrderStatus` (мутація, що після успіху інвалідовує запит `orders`).
+- **Контекст авторизації** в `src/hooks/useAuth.tsx` (`AuthProvider` / `useAuth`) надає `user`, `isLoading`, `login`, `logout`. Під час монтування відновлює сесію через `GET /users/me`, якщо є `accessToken`.
+- Локальний стан сторінок — через `useState` (фільтри, чернетки, поля форм).
+
+## Як застосунок говорить з API
+
+- `src/api/axios.ts` — інстанс axios із зашитою базовою адресою `http://localhost:3000`.
+- Інтерсептор запиту додає `Authorization: Bearer <accessToken>`.
+- Інтерсептор відповіді обробляє `401`: робить один `POST /auth/refresh`, зберігає нову пару й повторює запит; якщо оновлення не вдалося — чистить токени й переходить на `/login`.
+- Полінг: замовлення кожні `5 с` (`useOrders`), залишки на дашборді — кожні `15 с`.
+- API-модулі лежать у `src/api/`: `auth.ts`, `orders.ts`, `products.ts` (також `categoriesApi`, `tagsApi`) та `inventory.ts`.
+
+Дев-сервер Vite також має проксі `/api` на `http://localhost:3000`, але axios-клієнт його не використовує — він звертається до бекенду напряму.
+
+До того ж: [Архітектура](/uk/архітектура), [Життєвий цикл замовлення](/uk/статуси_переходи).
+
+## Авторизація та ролі
+
+- `RoleGuard` (`src/components/RoleGuard.tsx`) показує спінер, поки `isLoading`, перекидає на `/login`, якщо `user` немає, і рендерить «Access denied», якщо `user.role` відсутня в `allowedRoles`. Панель відкрита для `owner`, `admin` і `chef`.
+
+## Ключові реалізовані фічі
+
+- **Дашборд**: картки New Orders, Waiting to Cook, Cooking Now і Ready for Courier, виторг із доставлених замовлень та список позицій із низьким залишком.
+- **Дошка замовлень**: вкладки-фільтри за статусом; дії «Accept & Start Cooking» / «Start Cooking» (`cooking`) та «Mark as Ready for Courier» (`ready`); блокування оплати карткою («Awaiting card payment») і стани лише для читання, коли замовлення вже в кур'єра.
+- **Рецепти**: список страв із пошуком, завантажений із `/products`.
+- **Склад**: редагування залишків, додавання та видалення позицій (`/inventory`).

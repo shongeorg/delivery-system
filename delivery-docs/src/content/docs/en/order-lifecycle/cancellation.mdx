@@ -1,0 +1,24 @@
+---
+title: Cancellation
+description: Order cancellation rules and endpoint
+---
+
+# Cancellation
+
+## Cancellation Endpoint
+
+`POST /orders/:id/cancel` — Cancel an order.
+
+### Customer Cancellation
+
+Can cancel only own order in `created` or `paid` status.
+
+### Staff Cancellation (owner/admin)
+
+Can cancel in `created` or `paid` status.
+
+### Important
+
+After `cooking` status, cancellation via this endpoint returns `400`.
+
+Changing status to `cancelled` for later statuses can only be done through `PATCH /orders/:id/status` with staff role.

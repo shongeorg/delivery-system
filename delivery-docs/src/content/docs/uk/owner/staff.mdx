@@ -1,0 +1,31 @@
+---
+title: Персонал і зарплати
+description: Управління персоналом, зарплати та виплати
+---
+
+# Персонал і зарплати
+
+## Персонал
+
+`GET /owner/staff` — акаунти з умовами оплати (`search`, `role`).
+
+## Оновлення персоналу
+
+`PATCH /owner/staff/:id` — Роль, ім'я, телефон, блокування.
+
+## Зарплати
+
+`PUT /owner/staff/:id/salary` — `{ baseSalary, bonusPercentage, currency }`.
+
+## Виплати
+
+`GET /owner/payroll` — Виплати й підсумки (`period=YYYY-MM`).
+
+## Створення виплати
+
+`POST /owner/payroll` — `{ userId, amount, type, period?, note? }`.
+
+## Таблиці
+
+- `staff_salaries`: базова зарплата, бонус, валюта.
+- `payroll_payments`: історія виплат.

@@ -1,0 +1,109 @@
+---
+title: Каталог
+description: Ендпоінти продуктів, категорій і тегів
+---
+
+# Каталог
+
+Публічні ендпоінти читання та ендпоінти запису для `owner`/`admin`. Усі відповіді — JSON.
+
+## Продукти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/products` | публічно | `{ products, pagination }`; `page`, `limit`, пошук/фільтри |
+| GET | `/products/:slug` | публічно | Продукт із категоріями, тегами, інгредієнтами |
+| POST | `/products` | owner/admin | Створити |
+| PATCH | `/products/:id` | owner/admin | Оновити (зміна ціни пише audit log) |
+| DELETE | `/products/:id` | owner/admin | Видалити (пише audit log) |
+
+### Список продуктів
+
+`GET /products?page=1&limit=25`
+
+Відповідь `200`:
+
+```json
+{
+  "products": [
+    { "id": "…", "name": "Margherita", "slug": "margherita", "price": "9.99", "description": null, "cover": null, "createdAt": "…", "createdBy": null }
+  ],
+  "pagination": { "page": 1, "limit": 25, "total": 1, "lastPage": 1 }
+}
+```
+
+`page` за замовчуванням `1`, `limit` — `25`.
+
+### Деталі продукту
+
+`GET /products/:slug` додає до об'єкта продукту `categories`, `tags` та `ingredients`. Помилки: `404 Product not found`.
+
+### Створення продукту
+
+`POST /products` — доступ: `owner` або `admin`.
+
+```json
+{
+  "name": "Margherita",
+  "price": 9.99,
+  "description": "Classic pizza",
+  "cover": "https://…",
+  "categoryIds": ["…"],
+  "tagIds": ["…"],
+  "ingredients": [{ "name": "Mozzarella", "quantity": 100, "unit": "g" }]
+}
+```
+
+`name` — щонайменше 2 символи, `price` — додатне число. Відповідь `201` — створений продукт.
+
+### Оновлення продукту
+
+`PATCH /products/:id` — доступ: `owner` або `admin`. Тіло приймає будь-яке підмножество полів створення. Зміна ціни пише запис у `audit_logs`.
+
+### Видалення продукту
+
+`DELETE /products/:id` — доступ: `owner` або `admin`. Повертає `{ "success": true }` і пише audit log.
+
+## Категорії
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/categories` | публічно | Масив категорій |
+| GET | `/categories/:slug` | публічно | `{ category, products, pagination }` |
+| POST | `/categories` | owner/admin | Створити |
+| PATCH | `/categories/:id` | owner/admin | Оновити |
+| DELETE | `/categories/:id` | owner/admin | Видалити |
+
+Тіло `POST /categories`: `{ "name": "Pizza", "description": "…", "cover": "https://…" }` (`name` — щонайменше 2 символи).
+
+`GET /categories/:slug?page=1&limit=25`:
+
+```json
+{
+  "category": { "id": "…", "name": "Pizza", "slug": "pizza", "description": null, "cover": null },
+  "products": [ … ],
+  "pagination": { "page": 1, "limit": 25, "total": 4, "lastPage": 1 }
+}
+```
+
+Помилки: `404 Category not found`.
+
+## Теги
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/tags` | публічно | Масив тегів |
+| GET | `/tags/:slug` | публічно | Тег із продуктами |
+| POST | `/tags` | owner/admin | Створити |
+| DELETE | `/tags/:id` | owner/admin | Видалити |
+
+Тіло `POST /tags`: `{ "name": "Vegan" }`. `GET /tags/:slug` повертає тег разом із масивом `products`. Помилки: `404 Tag not found`.
+
+## Форми відповідей
+
+Форми відповідей нерівномірні: `/products` і `/categories/:slug` повертають об'єкт із `pagination`, тоді як `/categories` і `/tags` — прості масиви.
+
+## Дивіться також
+
+- [Склад](/uk/api/inventory)
+- [Коди помилок](/uk/api/errors)

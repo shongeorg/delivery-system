@@ -1,0 +1,109 @@
+---
+title: Catalog (Products, Categories, Tags)
+description: Products, categories and tags endpoints
+---
+
+# Catalog (Products, Categories, Tags)
+
+Public read endpoints plus `owner`/`admin` write endpoints. All responses are JSON.
+
+## Products
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/products` | public | `{ products, pagination }`; `page`, `limit`, search/filters |
+| GET | `/products/:slug` | public | Product with categories, tags, ingredients |
+| POST | `/products` | owner/admin | Create |
+| PATCH | `/products/:id` | owner/admin | Update (a price change writes an audit log) |
+| DELETE | `/products/:id` | owner/admin | Delete (writes an audit log) |
+
+### List Products
+
+`GET /products?page=1&limit=25`
+
+Response `200`:
+
+```json
+{
+  "products": [
+    { "id": "…", "name": "Margherita", "slug": "margherita", "price": "9.99", "description": null, "cover": null, "createdAt": "…", "createdBy": null }
+  ],
+  "pagination": { "page": 1, "limit": 25, "total": 1, "lastPage": 1 }
+}
+```
+
+`page` defaults to `1`, `limit` to `25`.
+
+### Product Details
+
+`GET /products/:slug` adds `categories`, `tags` and `ingredients` to the product object. Errors: `404 Product not found`.
+
+### Create Product
+
+`POST /products` — access: `owner` or `admin`.
+
+```json
+{
+  "name": "Margherita",
+  "price": 9.99,
+  "description": "Classic pizza",
+  "cover": "https://…",
+  "categoryIds": ["…"],
+  "tagIds": ["…"],
+  "ingredients": [{ "name": "Mozzarella", "quantity": 100, "unit": "g" }]
+}
+```
+
+`name` — at least 2 characters, `price` — a positive number. Response `201` — the created product.
+
+### Update Product
+
+`PATCH /products/:id` — access: `owner` or `admin`. The body accepts any subset of the create fields. A price change writes to `audit_logs`.
+
+### Delete Product
+
+`DELETE /products/:id` — access: `owner` or `admin`. Returns `{ "success": true }` and writes an audit log.
+
+## Categories
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/categories` | public | Array of categories |
+| GET | `/categories/:slug` | public | `{ category, products, pagination }` |
+| POST | `/categories` | owner/admin | Create |
+| PATCH | `/categories/:id` | owner/admin | Update |
+| DELETE | `/categories/:id` | owner/admin | Delete |
+
+`POST /categories` body: `{ "name": "Pizza", "description": "…", "cover": "https://…" }` (`name` — at least 2 characters).
+
+`GET /categories/:slug?page=1&limit=25`:
+
+```json
+{
+  "category": { "id": "…", "name": "Pizza", "slug": "pizza", "description": null, "cover": null },
+  "products": [ … ],
+  "pagination": { "page": 1, "limit": 25, "total": 4, "lastPage": 1 }
+}
+```
+
+Errors: `404 Category not found`.
+
+## Tags
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/tags` | public | Array of tags |
+| GET | `/tags/:slug` | public | Tag with its products |
+| POST | `/tags` | owner/admin | Create |
+| DELETE | `/tags/:id` | owner/admin | Delete |
+
+`POST /tags` body: `{ "name": "Vegan" }`. `GET /tags/:slug` returns the tag plus a `products` array. Errors: `404 Tag not found`.
+
+## Response Shapes
+
+Response shapes are inconsistent: `/products` and `/categories/:slug` return an object with `pagination`, while `/categories` and `/tags` return bare arrays.
+
+## Further Reading
+
+- [Inventory](/en/api/inventory)
+- [Error Codes](/en/api/errors)

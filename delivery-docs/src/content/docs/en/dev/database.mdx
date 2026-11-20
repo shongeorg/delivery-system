@@ -1,0 +1,60 @@
+---
+title: Database Commands
+description: Drizzle, Neon HTTP, and the db:* scripts
+---
+
+# Database Commands
+
+The backend uses [Drizzle ORM](https://orm.drizzle.team/) over `drizzle-orm/neon-http` (the Neon serverless HTTP driver) against a Neon PostgreSQL database, configured in `backend/src/db/index.ts` and `backend/drizzle.config.ts`.
+
+All 22 tables are defined in `backend/src/db/schema.ts`.
+
+## Scripts
+
+Run these from the `backend` directory:
+
+| Command | What it does |
+|---------|--------------|
+| `npm run db:push` | Applies the schema in `schema.ts` directly to the database |
+| `npm run db:generate` | Generates SQL migrations from the schema into `drizzle/` |
+| `npm run db:seed` | Loads demo data and test accounts (`tsx src/db/seed.ts`) |
+| `npm run db:clear` | Deletes all data except `owner` and `admin` users (`tsx src/db/clear.ts`) |
+| `npm run db:studio` | Opens Drizzle Studio |
+
+Typical first-run sequence:
+
+```bash
+cd backend
+npm run db:push
+npm run db:seed
+```
+
+## Migrations
+
+`drizzle/` is gitignored and no migrations are committed. Apply schema changes with `npm run db:push`; `db:generate` is optional and only produces local SQL files.
+
+## `db:clear`
+
+`db:clear` is **not** product-only — it deletes all data except `owner` and `admin` users. Use it with care on a shared or seeded database.
+
+## The 22 tables
+
+users, refresh_tokens, categories, products, tags, product_categories, product_tags, ingredients, inventory, orders, order_items, reviews, carts, cart_items, chats, messages, courier_locations, staff_salaries, payroll_payments, expenses, restaurant_settings, audit_logs.
+
+Notable columns: `orders.courierId/lat/lng`, `courier_locations` (the last courier position, upserted per courier), `chats.orderId`.
+
+## One-off scripts
+
+Ad-hoc scripts at the backend root (`test-*.ts`, `create-*.ts`, `check-orders.ts`, ...) run with `npx tsx <file>`:
+
+```bash
+cd backend
+npx tsx check-orders.ts
+```
+
+They sit outside `tsconfig` (`rootDir: src`) and are not built or type-checked.
+
+## Related
+
+- [Environment Variables](/en/dev/env)
+- [Data Model](/en/data-model/er)

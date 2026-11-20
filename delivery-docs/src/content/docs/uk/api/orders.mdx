@@ -1,0 +1,109 @@
+---
+title: Замовлення
+description: Створення замовлень, переходи статусів, трекінг і скасування
+---
+
+# Замовлення
+
+Створення замовлення очищає кошик і розсилає `new_order`. Переходи статусів підпорядковуються матриці зі сторінки [Життєвий цикл замовлення](/uk/order-lifecycle/statuses).
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/orders` | owner/admin/chef/courier | Усі замовлення (масив) з `items`, `user`, `courier` |
+| GET | `/orders/my` | автентифікована | Замовлення поточного користувача |
+| GET | `/orders/:id` | власник або staff/кур'єр | Одне замовлення з позиціями |
+| GET | `/orders/:id/tracking` | власник, призначений кур'єр, staff | `{ order, client, courier, location }` |
+| POST | `/orders` | автентифікована | `{ deliveryType, address?, phone, paymentType, lat?, lng?, items[] }` |
+| PATCH | `/orders/:id/status` | staff або кур'єр | `{ status }`, переходи з матриці |
+| PUT | `/orders/:id/location` | кур'єр, призначений на замовлення | `{ lat, lng }` |
+| POST | `/orders/:id/cancel` | власник або owner/admin | Лише `created`/`paid` |
+
+## Список замовлень
+
+`GET /orders` — доступ: `owner`, `admin`, `chef`, `courier`. Повертає масив замовлень; необов'язковий параметр `?status=ready` фільтрує за статусом. Кожне замовлення збагачене полями `items`, `user` і `courier`.
+
+`GET /orders/my` — власні замовлення автентифікованого користувача з тим самим збагаченням.
+
+## Одне замовлення
+
+`GET /orders/:id` — власник замовлення або будь-яка роль з `owner`/`admin`/`chef`/`courier`. Повертає замовлення разом із масивом `items` (кожна позиція несе свій `product`). Помилки: `404 Order not found`, `403 Forbidden`.
+
+## Трекінг
+
+`GET /orders/:id/tracking` — клієнт, призначений кур'єр або staff:
+
+```json
+{
+  "order": {
+    "id": "…",
+    "status": "on_the_way",
+    "deliveryType": "delivery",
+    "address": "Khreshchatyk 1",
+    "phone": "+380000000000",
+    "totalPrice": "19.98",
+    "paymentType": "card",
+    "paymentStatus": "paid",
+    "createdAt": "…",
+    "items": [ … ]
+  },
+  "client": { "lat": 50.447, "lng": 30.522 },
+  "courier": { "id": "…", "name": "Bob", "phone": "+380000000000" },
+  "location": { "lat": 50.45, "lng": 30.52, "updatedAt": "…" }
+}
+```
+
+`client`, `courier` і `location` набувають значення `null`, коли відсутні.
+
+## Створення замовлення
+
+`POST /orders`
+
+```json
+{
+  "deliveryType": "delivery",
+  "address": "Khreshchatyk 1",
+  "phone": "+380000000000",
+  "paymentType": "card",
+  "lat": 50.447,
+  "lng": 30.522,
+  "items": [{ "productId": "…", "quantity": 2 }]
+}
+```
+
+`deliveryType` — `pickup` або `delivery`; `paymentType` — `card` або `cash`; `items` — щонайменше одна позиція. Замовлення створюється зі статусом `created` і `paymentStatus: pending`; сума обчислюється з цін продуктів. Кошик очищається, і розсилається `new_order`.
+
+Відповідь `201` — створене замовлення. Помилки: `400 Some products not found`.
+
+## Зміна статусу
+
+`PATCH /orders/:id/status` — доступ: `owner`, `admin`, `chef`, `courier`.
+
+```json
+{ "status": "cooking" }
+```
+
+`status` — один із `created`, `paid`, `cooking`, `ready`, `on_the_way`, `delivered`, `cancelled`. Кур'єр може ставити лише `on_the_way` і `delivered`; встановлення `on_the_way` призначає цього кур'єра на замовлення. Недозволений перехід повертає `409`, замовлення, уже прийняте іншим кур'єром, повертає `409`, а замовлення, призначене іншому кур'єру, — `403`.
+
+У разі успіху зміна розсилається як `order_updated` — глобально й у канал `order:<id>`.
+
+## Локація кур'єра
+
+`PUT /orders/:id/location` — доступ: `courier`, і лише кур'єр, призначений на замовлення.
+
+```json
+{ "lat": 50.45, "lng": 30.52 }
+```
+
+Зберігає позицію та розсилає `courier_location` у канал `order:<id>`. Це HTTP-фолбек для WebSocket-повідомлення `courier_location_update`; обидва шляхи спільно використовують `src/services/tracking.ts`.
+
+## Скасування замовлення
+
+`POST /orders/:id/cancel` — доступ: власник замовлення або `owner`/`admin`. Скасувати можна лише замовлення зі статусом `created` або `paid`; будь-який інший статус повертає `400`. Повертає оновлене замовлення й розсилає `order_cancelled`. Помилки: `403 Forbidden`.
+
+## Дивіться також
+
+- [Життєвий цикл замовлення](/uk/order-lifecycle/statuses)
+- [Платежі](/uk/api/payments)
+- [Realtime](/uk/realtime/connection)

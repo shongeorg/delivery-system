@@ -1,0 +1,57 @@
+---
+title: Order Chat
+description: One chat per order, its participants, permissions and endpoints
+---
+
+# Order Chat
+
+There is one chat per order (`chats.orderId` is unique). Participants are derived from the order itself; there is no separate membership table.
+
+## Participants
+
+| Who | How it is determined | `sender` in the message |
+|-----|----------------------|-------------------------|
+| Customer | `order.userId === userId` | `user` |
+| Courier | `order.courierId === userId` and role `courier` | `courier` |
+| Admin / owner | role `owner` or `admin` | `admin` |
+
+## Permissions
+
+- Only a participant of the order can read and write: the owner, the assigned courier, or `owner`/`admin`.
+- A different courier gets `403`, even if the order is visible in their list.
+- The chat is created lazily on the first access (`GET /chats/order/:orderId`), with `userId` set to the order owner.
+
+## Endpoints
+
+These are defined in `backend/src/routes/chats.ts`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/chats/order/:orderId` | Get or create the chat |
+| `GET` | `/chats/order/:orderId/messages` | History (ascending by time) |
+| `POST` | `/chats/order/:orderId/messages` | `{ "text": "..." }` → `201` |
+
+On `POST`, `resolveSender` picks the `sender` in this order: the assigned courier (`courier`), a staff role (`admin`), the order owner (`user`); anything else is `403`.
+
+## Delivery
+
+A new message is immediately broadcast to the channel `order:<id>` as `chat_message`, so the other participants see it without reloading, as long as their socket is open:
+
+```mermaid
+sequenceDiagram
+  participant S as Sender
+  participant API as Backend
+  participant WS as channel order:&lt;id&gt;
+
+  S->>API: POST /chats/order/:orderId/messages { text }
+  API->>API: resolveSender (courier / admin / user)
+  API->>WS: chat_message
+  API-->>S: 201 message
+  Note over WS: other participants reload the history on chat_message
+```
+
+Because events are not queued, a client that is reconnecting will miss the event and relies on the 5 s polling of the messages. See [Chat UI](/en/tracking-chat/chat-ui) and [Data Flow](/en/tracking-chat/data-flow).
+
+## Legacy chat API
+
+The old API `/chats` (customer ↔ admin, without an order) is kept for compatibility, but no UI uses it.

@@ -1,0 +1,26 @@
+---
+title: Edge Cases
+description: Known edge cases and error conditions
+---
+
+# Edge Cases
+
+## Two Couriers Accepting Simultaneously
+
+Race condition possible: both pass validation. In tests second gets `409`, but DB-level unique/conditional UPDATE not guaranteed.
+
+## Client Doesn't Provide Location
+
+`lat/lng = null`. Tracking shows address and phone; route built only if courier position exists.
+
+## Courier Without Geolocation
+
+Button "Share my location" inactive; OSRM route not built — expected behavior, not error.
+
+## Stale Orders
+
+Test records exist 241 days old; they affect counters but not "today's" metrics.
+
+## Canceling Delivered Order
+
+Matrix forbids; no direct endpoint.

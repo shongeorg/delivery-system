@@ -1,0 +1,10 @@
+---
+title: Kitchen Overview
+description: Kitchen queue, wait times, assigned couriers
+---
+
+# Kitchen Overview
+
+`GET /owner/kitchen` — Черга по статусах, час очікування, **призначений кур'єр** (ім'я, телефон) для `on_the_way`.
+
+Limitation: no live courier map in owner panel; position available via `GET /orders/:id/tracking` (role owner allowed) but UI doesn't show it.

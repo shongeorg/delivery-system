@@ -1,0 +1,70 @@
+---
+title: Courier App (Vue PWA)
+description: Застосунок кур'єра — маршрути, стейти Pinia, WebSocket і планування маршруту
+---
+
+# Courier App (Vue PWA)
+
+Застосунок кур'єра: встановлюваний PWA з мобільним фокусом, у якому кур'єр забирає готові замовлення, їде до клієнта й транслює свою позицію. Побудований на **Vue 3**, **Pinia** та **vue-router**, з картами **Leaflet**. Працює на порту `3032`.
+
+## Стек, порт, роль
+
+| Стек | Порт | Роль |
+|------|------|------|
+| Vue 3 + Pinia + vue-router + Leaflet + Tailwind + `vite-plugin-pwa` | `3032` | Кур'єр: доступні доставки, забір, доставка, локація, дзвінки |
+
+## Маршрути
+
+Описані в `src/router/index.js`:
+
+| Маршрут | Ім'я | Екран |
+|---------|------|-------|
+| `/` | `login` | Вхід (перекидає на `/orders`, якщо вже авторизовано) |
+| `/orders` | `orders` | Дошка доставок із вкладками Available / Active / Completed |
+| `/orders/:id` | `order-detail` | Деталі замовлення, дії зі статусом і чат |
+| `/orders/:id/map` | `order-route` | Маршрут до клієнта на карті |
+| `/map` | `map` | Вільний огляд карти |
+| `/profile` | `profile` | Профіль кур'єра та статистика доставок |
+
+Усі маршрути, крім `/`, мають `meta.requiresAuth`; страж `beforeEach` перекидає неавторизованих на `/`, а авторизованих — з `/`.
+
+## Керування станом
+
+Стейти Pinia у `src/stores/`:
+
+- `auth.js` — `user`, `accessToken`, `refreshToken`, `isAuthenticated`, `isCourier`; `login`, `refresh`, `logout`, `init` (відновлює токени з `localStorage`).
+- `order.js` — `orders`, `currentOrder`; `fetchOrders`, `fetchOrderById`, `updateStatus`, `acceptOrder` (`on_the_way`), `completeOrder` (`delivered`).
+- `chat.js` — повідомлення замовлення; `load`, `send`, `receive` (дедуплікує за `id`).
+- `location.js` — геолокація браузера через `navigator.geolocation.watchPosition` (`startTracking`, `stopTracking`).
+- `socket.js` — життєвий цикл WebSocket і маршрутизація повідомлень; `sendLocationUpdate`.
+- `call.js` — голосові дзвінки WebRTC (див. нижче).
+
+## Як застосунок говорить з API
+
+- `src/api/client.js` — інстанс axios із зашитою базовою адресою `http://localhost:3000`.
+- Інтерсептор запиту додає `Authorization: Bearer <accessToken>`.
+- Інтерсептор відповіді обробляє `401`: викликає `authStore.refresh()` один раз (дедуплікація `refreshOnce`), повторює початковий запит, а якщо оновлення не вдалося — робить `logout()` і переходить на `/`.
+- Полінг: `OrdersView.vue` та `OrderDetailView.vue` перезапитують дані кожні `15 с`.
+
+Realtime (`src/stores/socket.js`) підключається до `ws://localhost:3000/ws`:
+
+- Після відкриття надсилає `auth` з access-токеном, повторно підписується на збережені канали й підписується на канал `orders`.
+- Обробляє `order_updated`, `new_order` і `order_cancelled` повторним завантаженням замовлень, `chat_message` — через чат-стейт, а всю родину `call_*` / `webrtc_*` / `ice_candidate` — через стейт дзвінків.
+- Після закриття перепідключається через `3 с`.
+
+До того ж: [Realtime](/uk/підключення_протокол), [Трекінг і чат](/uk/трекінг).
+
+## Авторизація та ролі
+
+- Сесія — це користувач і токени у `localStorage`; вхід і оновлення відбуваються через бекенд.
+- Страж маршрутів перевіряє лише *автентифікацію* (`requiresAuth`), а не конкретну роль; прапорець `isCourier` існує, але застосунок покладається на бекенд `allowRoles` для кур'єрських ендпоінтів. На екрані входу є демо-акаунти кур'єрів.
+
+## Ключові реалізовані фічі
+
+- Дошка доставок зі вкладками статусів і картками замовлень.
+- Дії «прийняти й забрати» (`on_the_way`) та «позначити доставленим» (`delivered`).
+- Чат замовлення, спільний із клієнтом і підтримкою.
+- Екран маршруту: мітки кур'єра та клієнта, відстань і ETA з публічного роутера OSRM (`router.project-osrm.org`) із пунктирною прямою лінією як фолбеком.
+- Передача локації: позиція кур'єра надсилається через WebSocket (`courier_location_update`) і `PUT /orders/:id/location`, не частіше ніж раз на `8 с`.
+- Голосові дзвінки WebRTC до клієнта: `call_invite` / `call_accept` / `call_decline` / `call_end` та `webrtc_offer` / `webrtc_answer` / `ice_candidate`, з публічними STUN-серверами Google і таймаутом дозвону `30 с`.
+- Встановлюваний PWA (маніфест, service worker з `autoUpdate`) зі зручною офлайн-оболонкою.

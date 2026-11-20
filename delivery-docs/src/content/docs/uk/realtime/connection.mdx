@@ -1,0 +1,41 @@
+---
+title: Підключення і протокол
+description: WebSocket підключення та формат повідомлень
+---
+
+# Підключення і протокол
+
+## URL
+
+```
+ws://localhost:3000/ws
+```
+
+## Сервер
+
+`setupWebSocket()` у `backend/src/websocket.ts` (`WebSocketServer` з пакета `ws`). Кожне повідомлення має конверт `{ "type": "...", "data": ... }`.
+
+```typescript
+const message = JSON.stringify({ type: event, data });
+```
+
+## Ініціалізація клієнта
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant W as ws server
+
+  C->>W: open
+  W-->>C: { type: "connected" }
+  C->>W: { type: "auth", token: "JWT..." }
+  W-->>C: { type: "auth", status: "success" }
+  C->>W: { type: "subscribe", channel: "order:UUID" }
+  W->>W: перевірка доступу до замовлення
+  W-->>C: { type: "subscribed", channel }
+  Note over C,W: далі сервер шле order_updated / courier_location / chat_message
+  C->>W: { type: "unsubscribe" } при виході зі сторінки
+  C->>W: close
+```
+
+Клієнти перепідключаються самі: `courier-app` через 3 с, сторінка трекінгу — через 3 с, поки компонент живий.

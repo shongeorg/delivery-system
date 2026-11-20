@@ -1,0 +1,73 @@
+---
+title: Панель власника
+description: Ендпоінти агрегованої аналітики, персоналу, зарплат, фінансів, кухні та налаштувань
+---
+
+# Панель власника
+
+Усі маршрути вимагають `Authorization: Bearer <accessToken>` із роллю `owner` або `admin`.
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/owner/overview` | owner/admin | Дохід (today/week/month/total), замовлення, середній чек, персонал, топ-продукти, низький залишок |
+| GET | `/owner/staff` | owner/admin | Акаунти з умовами оплати (`search`, `role`) |
+| PATCH | `/owner/staff/:id` | owner/admin | Роль, ім'я, телефон, блокування |
+| PUT | `/owner/staff/:id/salary` | owner/admin | `{ baseSalary, bonusPercentage, currency }` |
+| GET | `/owner/payroll` | owner/admin | Виплати й підсумки (`period=YYYY-MM`) |
+| POST | `/owner/payroll` | owner/admin | `{ userId, amount, type, period?, note? }` |
+| GET | `/owner/finances` | owner/admin | Дохід, payroll, витрати, чистий прибуток, денний ряд |
+| GET | `/owner/expenses` | owner/admin | Список витрат |
+| POST | `/owner/expenses` | owner/admin | Створити витрату |
+| DELETE | `/owner/expenses/:id` | owner/admin | Видалити витрату |
+| GET | `/owner/kitchen` | owner/admin | Черга, `waitingMinutes`, `courier` для призначених, низький залишок |
+| GET | `/owner/settings` | owner/admin | Налаштування закладу |
+| PATCH | `/owner/settings` | owner/admin | Оновити налаштування |
+| GET | `/owner/audit-logs` | owner/admin | Останні записи журналу, найновіші спершу (до 200) |
+
+## Огляд
+
+`GET /owner/overview` повертає агрегат для дашборда: `revenue` (`today`/`week`/`month`/`total`), `orders` (`today`/`active`/`deliveredToday`/`total`/`averageValue`), `finance` (`payrollMonth`/`expensesMonth`/`netProfitMonth`), `staff` (`total`/`byRole`/`blocked`), `topProducts` (до 5) і `lowStock` (до 8 позицій). Дохід рахує лише замовлення зі `paymentStatus: paid`, які не `cancelled`.
+
+## Персонал
+
+`GET /owner/staff?search=&role=` — акаунти, збагачені умовами оплати. `search` шукає за іменем, email, телефоном чи роллю; `role` фільтрує за роллю.
+
+`PATCH /owner/staff/:id` — тіло: `{ "name"?, "role"?, "isBlocked"?, "phone"? }`. Лише `owner` може змінювати акаунт власника; користувач не може змінити власну роль. Пише audit log.
+
+Помилки: `404 User not found`, `403 Only the owner can modify an owner account`, `400 You cannot change your own role`.
+
+`PUT /owner/staff/:id/salary` — тіло: `{ "baseSalary": 1000, "bonusPercentage": 10, "currency": "USD" }`. Створює або оновлює запис зарплати та пише audit log.
+
+## Зарплати
+
+`GET /owner/payroll?period=YYYY-MM` — повертає `{ payments, totals }`, де `totals` має `salary`, `bonus` і `all`; кожна виплата збагачена своїм `user`.
+
+`POST /owner/payroll` — тіло: `{ "userId": "…", "amount": 100, "type": "salary" | "bonus", "period"?, "note"? }`. Відповідь `201` — створена виплата. Помилки: `404 User not found`.
+
+## Фінанси
+
+`GET /owner/finances?from=&to=` — за замовчуванням поточний місяць. Повертає `{ from, to, totals, series, expenses, payrollPayments }`, де `totals` має `revenue`, `payroll`, `expenses`, `net`, `orders`, `paidOrders`, а `series` — денний розподіл із `revenue`/`payroll`/`expenses`/`net`.
+
+## Витрати
+
+`GET /owner/expenses` — список витрат, найновіші спершу.
+
+`POST /owner/expenses` — тіло: `{ "title": "…", "category": "…", "amount": 50, "note"? }`. Відповідь `201`. Пише audit log.
+
+`DELETE /owner/expenses/:id` — видаляє витрату та пише audit log. Помилки: `404 Expense not found`.
+
+## Кухня
+
+`GET /owner/kitchen` — повертає `counts` за активними статусами, чергу `queue` активних замовлень (кожне з `courier`, `items` і `waitingMinutes`), `oldestWaitingMinutes` та `lowStock`.
+
+## Налаштування
+
+`GET /owner/settings` — налаштування закладу; запис створюється при першому зверненні.
+
+`PATCH /owner/settings` — тіло приймає `name`, `phone`, `address`, `workingHours`, `currency`, `taxRate`, `deliveryFee`, `logo`, `cover`. Створює або оновлює налаштування та пише audit log.
+
+## Журнал аудиту
+
+`GET /owner/audit-logs` — останні записи журналу, найновіші спершу (до 200), кожен збагачений своїм `user`.

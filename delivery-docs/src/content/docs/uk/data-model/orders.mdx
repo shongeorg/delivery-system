@@ -1,0 +1,38 @@
+---
+title: Замовлення
+description: Таблиці замовлень та позицій замовлення
+---
+
+# Замовлення
+
+## Таблиця orders
+
+Таблиця `orders` — замовлення. `courierId` — призначений кур'єр; `lat/lng` — точка клієнта (геолокація або геокодинг).
+
+| Поле | Тип | Призначення |
+|------|-----|-------------|
+| `id` | uuid | Унікальний ідентифікатор |
+| `userId` | uuid | Посилання на `users.id` |
+| `totalPrice` | numeric | Сума замовлення (фіксується на момент створення) |
+| `status` | text | Статус: `created · paid · cooking · ready · on_the_way · delivered · cancelled` |
+| `deliveryType` | text | Тип доставки: `pickup · delivery` |
+| `address` | text | Вільний текст адреси |
+| `phone` | text | Телефон клієнта |
+| `paymentType` | text | Тип оплати: `card · cash` |
+| `paymentStatus` | text | Статус оплати: `pending · paid · failed · refunded` |
+| `courierId` | uuid | Призначений кур'єр (може бути null) |
+| `lat` | numeric | Координата широти (необов'язково) |
+| `lng` | numeric | Координата довготи (необов'язково) |
+| `createdAt` | timestamp | Коли створено |
+
+## Таблиця order_items
+
+Таблиця `order_items` — позиції замовлення. `price` фіксується на момент створення.
+
+| Поле | Тип | Призначення |
+|------|-----|-------------|
+| `id` | uuid | Унікальний ідентифікатор |
+| `orderId` | uuid | Посилання на `orders.id` |
+| `productId` | uuid | Посилання на `products.id` |
+| `quantity` | int | Кількість |
+| `price` | numeric | Ціна на момент створення (фіксується) |

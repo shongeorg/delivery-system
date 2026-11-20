@@ -1,0 +1,59 @@
+---
+title: Reviews
+description: Product review endpoints
+---
+
+# Reviews
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/reviews/product/:productId` | public | Reviews for a product |
+| POST | `/reviews` | authenticated | Create (unique per user + product pair) |
+| PATCH | `/reviews/:id` | author | Update |
+| DELETE | `/reviews/:id` | author or owner/admin | Delete |
+
+## List Reviews
+
+`GET /reviews/product/:productId` — public. Returns an array of reviews, each carrying the author's `user`:
+
+```json
+[
+  {
+    "id": "…",
+    "userId": "…",
+    "productId": "…",
+    "rating": 5,
+    "text": "Great!",
+    "createdAt": "…",
+    "user": { "id": "…", "name": "Jane Doe", "slug": "jane-doe", "cover": null }
+  }
+]
+```
+
+## Create Review
+
+`POST /reviews`
+
+```json
+{ "productId": "…", "rating": 5, "text": "Great!" }
+```
+
+`rating` — from 1 to 5, `text` — at least 3 characters. One review per user and product; a user blocked from reviews cannot post.
+
+Errors: `403 You are blocked from creating reviews`, `400 You have already reviewed this product`. Response `201` — the created review.
+
+## Update Review
+
+`PATCH /reviews/:id` — access: the review author. Body: any subset of `{ "rating": 4, "text": "…" }`.
+
+Errors: `404 Review not found`, `403 Forbidden`.
+
+## Delete Review
+
+`DELETE /reviews/:id` — access: the review author or `owner`/`admin`. Returns `{ "success": true }`.
+
+## Further Reading
+
+- [Data Model — Cart, Reviews, Chats](/en/data-model/cart-reviews-chats)

@@ -1,0 +1,32 @@
+---
+title: Потік кур'єра
+description: Потік прийняття та завершення доставки
+---
+
+# Потік кур'єра
+
+```mermaid
+sequenceDiagram
+  participant Chef
+  participant API
+  participant Courier
+  participant WS as ws
+  participant Customer
+
+  Chef->>API: PATCH /orders/:id/status { ready }
+  API->>WS: order_updated
+  Courier->>API: PATCH /orders/:id/status { on_the_way }
+  API->>API: courierId := courier.id
+  API->>WS: order_updated
+  Courier->>API: PUT /orders/:id/location { lat, lng }
+  API->>WS: courier_location (канал замовлення)
+  WS-->>Customer: courier_location
+  Courier->>API: PATCH /orders/:id/status { delivered }
+  API->>WS: order_updated
+```
+
+## Ключові моменти
+
+- **Прийняття замовлення** — це й є прийняття. Немає адмінського "призначити іншого" кур'єра.
+- `courier_locations` зберігає лише останню позицію (upsert за `courierId`).
+- Замовлення може мати `courierId` і статус `delivered` — історія зберігається.

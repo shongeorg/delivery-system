@@ -1,0 +1,75 @@
+---
+title: Користувачі
+description: Ендпоінти профілю користувача та керування ролями
+---
+
+# Користувачі
+
+Усі маршрути користувачів вимагають `Authorization: Bearer <accessToken>`, якщо не вказано інше.
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/users/me` | будь-яка автентифікована | Поточний користувач |
+| PATCH | `/users/me` | будь-яка автентифікована | Ім'я, телефон, адреса, обкладинка (аватар) |
+| GET | `/users/:slug` | публічно | Публічний профіль |
+| PATCH | `/users/:id/role` | owner/admin | Зміна ролі |
+
+## Поточний користувач
+
+`GET /users/me` повертає профіль автентифікованого користувача:
+
+```json
+{
+  "id": "…",
+  "name": "Jane Doe",
+  "slug": "jane-doe",
+  "email": "jane@example.com",
+  "role": "customer",
+  "cover": null,
+  "phone": "+380000000000",
+  "address": "Kyiv"
+}
+```
+
+Помилки: `404 User not found`.
+
+## Оновлення профілю
+
+`PATCH /users/me`
+
+Усі поля необов'язкові:
+
+```json
+{ "name": "Jane Doe", "phone": "+380000000000", "address": "Kyiv", "cover": "https://…" }
+```
+
+`name` — щонайменше 2 символи. Повертає ту саму форму, що й `GET /users/me`.
+
+## Публічний профіль
+
+`GET /users/:slug` — без автентифікації. Повертає:
+
+```json
+{ "id": "…", "name": "Jane Doe", "slug": "jane-doe", "cover": null, "role": "customer" }
+```
+
+Помилки: `404 User not found`.
+
+## Зміна ролі
+
+`PATCH /users/:id/role` — доступ: `owner` або `admin`.
+
+Тіло запиту:
+
+```json
+{ "role": "courier" }
+```
+
+`role` має бути одним із `owner`, `admin`, `customer`, `chef`, `courier`. Повертає `{ id, name, slug, email, role }`. Помилки: `404 User not found`.
+
+## Дивіться також
+
+- [Авторизація](/uk/api/auth)
+- [Коди помилок](/uk/api/errors)

@@ -1,0 +1,37 @@
+---
+title: Оплата
+description: Потік оплати замовлення
+---
+
+# Оплата
+
+## Карткова оплата
+
+```mermaid
+sequenceDiagram
+  participant C as Клієнт
+  participant API
+  participant S as Stripe
+
+  C->>API: POST /orders (paymentType=card|cash)
+  alt card
+    C->>API: POST /payments/create-intent { orderId }
+    API->>S: PaymentIntent
+    API-->>C: clientSecret
+    C->>S: confirmCardPayment
+    S-->>C: succeeded
+    C->>API: POST /payments/confirm { orderId, paymentIntentId }
+    API->>API: status=paid, paymentStatus=paid
+  else cash
+    C->>C: статус лишається created / pending
+  end
+```
+
+- `POST /payments/webhook` обробляє `payment_intent.succeeded` і `.failed` незалежно від браузера.
+- Готівка: `paymentStatus` лишається `pending`; немає окремого ендпоінта "оплачено". Такі замовлення не входять у дохід власника.
+
+## Готівкова оплата
+
+- Замовлення створюється з `paymentStatus: pending`.
+- Немає окремого ендпоінта позначити як оплачене.
+- Дохід у фінансах враховує лише `paymentStatus = paid`.

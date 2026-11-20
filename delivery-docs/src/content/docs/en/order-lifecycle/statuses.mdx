@@ -1,0 +1,47 @@
+---
+title: Statuses & Transitions
+description: Order status matrix and allowed transitions
+---
+
+# Order Statuses & Transitions
+
+## Statuses
+
+`status`: `created · paid · cooking · ready · on_the_way · delivered · cancelled`.
+
+`deliveryType`: `pickup · delivery`.
+
+`paymentType`: `card · cash`.
+
+`paymentStatus`: `pending · paid · failed · refunded`.
+
+## Transition Matrix
+
+Realization: `allowedTransitions` у `backend/src/routes/orders.ts`. Будь-який інший перехід повертає `409`.
+
+| From \ To | paid | cooking | ready | on_the_way | delivered | cancelled |
+|-----------|------|---------|-------|------------|-----------|-----------|
+| `created` | ✅ | ✅ | — | — | — | ✅ |
+| `paid` | — | ✅ | — | — | — | ✅ |
+| `cooking` | — | — | ✅ | — | — | ✅ |
+| `ready` | — | — | — | ✅ | — | ✅ |
+| `on_the_way` | — | — | — | — | ✅ | ✅ |
+| `delivered` | — | — | — | — | — | — |
+| `cancelled` | — | — | — | — | — | — |
+
+## Courier Rules
+
+Додаткові правила для ролі `courier`:
+
+- дозволені лише `on_the_way` і `delivered`;
+- `on_the_way` можна поставити тільки з `ready`;
+- якщо `courierId` уже встановлений іншим кур'єром → `409 Order already accepted by another courier`;
+- якщо замовлення призначене іншому кур'єру → `403 Order is assigned to another courier`.
+
+### Cancellation Endpoint
+
+Скасування має окремий ендпоінт `POST /orders/:id/cancel`, який не користується матрицею:
+
+- клієнт може скасувати лише власне замовлення у статусі `created` або `paid`;
+- `owner`/`admin` — те саме;
+- після `cooking` скасування через цей ендпоінт повертає `400`. Змінити на `cancelled` пізніші статуси можна лише через `PATCH /orders/:id/status` роллю staff.

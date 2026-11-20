@@ -1,0 +1,59 @@
+---
+title: Відгуки
+description: Ендпоінти відгуків про продукти
+---
+
+# Відгуки
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/reviews/product/:productId` | публічно | Відгуки продукту |
+| POST | `/reviews` | автентифікована | Створити (унікально на пару user + product) |
+| PATCH | `/reviews/:id` | автор | Оновити |
+| DELETE | `/reviews/:id` | автор або owner/admin | Видалити |
+
+## Список відгуків
+
+`GET /reviews/product/:productId` — публічно. Повертає масив відгуків, кожен із яких несе `user` автора:
+
+```json
+[
+  {
+    "id": "…",
+    "userId": "…",
+    "productId": "…",
+    "rating": 5,
+    "text": "Great!",
+    "createdAt": "…",
+    "user": { "id": "…", "name": "Jane Doe", "slug": "jane-doe", "cover": null }
+  }
+]
+```
+
+## Створення відгуку
+
+`POST /reviews`
+
+```json
+{ "productId": "…", "rating": 5, "text": "Great!" }
+```
+
+`rating` — від 1 до 5, `text` — щонайменше 3 символи. На одну пару користувач + продукт — один відгук; користувач, заблокований для відгуків, не може писати.
+
+Помилки: `403 You are blocked from creating reviews`, `400 You have already reviewed this product`. Відповідь `201` — створений відгук.
+
+## Оновлення відгуку
+
+`PATCH /reviews/:id` — доступ: автор відгуку. Тіло: будь-яке підмножество `{ "rating": 4, "text": "…" }`.
+
+Помилки: `404 Review not found`, `403 Forbidden`.
+
+## Видалення відгуку
+
+`DELETE /reviews/:id` — доступ: автор відгуку або `owner`/`admin`. Повертає `{ "success": true }`.
+
+## Дивіться також
+
+- [Модель даних — Кошик, відгуки, чати](/uk/data-model/cart-reviews-chats)

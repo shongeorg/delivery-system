@@ -1,0 +1,47 @@
+---
+title: Система доставки їжі
+description: Повна документація системи доставки їжі
+template: splash
+hero:
+  tagline: Вітрина клієнта, кухня, PWA кур'єра та панель власника — п'ять застосунків, один API.
+  image:
+    file: ../../../assets/houston.webp
+  actions:
+    - text: English
+      link: /en/introduction
+      icon: right-arrow
+    - text: Українська
+      link: /uk/introduction
+      icon: right-arrow
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Розділи документації
+
+<CardGrid stagger>
+  <Card title="Вступ" icon="open-book">
+    Огляд системи, ролі, застосунки та карта документації. [Читати](/uk/introduction)
+  </Card>
+  <Card title="Архітектура" icon="puzzle">
+    Компоненти, технології та потоки даних. [Читати](/uk/architecture)
+  </Card>
+  <Card title="Швидкий старт" icon="rocket">
+    Запуск усіх п'яти застосунків локально. [Читати](/uk/quick-start)
+  </Card>
+  <Card title="Backend API" icon="setting">
+    Усі ендпоінти з ролями та прикладами. [Читати](/uk/api/auth)
+  </Card>
+  <Card title="Модель даних" icon="document">
+    ER-діаграма та всі 22 таблиці. [Читати](/uk/data-model/er)
+  </Card>
+  <Card title="Realtime" icon="laptop">
+    Протокол WebSocket, канали та фолбеки. [Читати](/uk/realtime/connection)
+  </Card>
+  <Card title="Трекінг і чат" icon="location">
+    Геолокація, геокодування, маршрут і чат замовлення. [Читати](/uk/tracking-chat/data-flow)
+  </Card>
+  <Card title="Розробка" icon="pencil">
+    Тестування, змінні середовища та команди БД. [Читати](/uk/dev/testing)
+  </Card>
+</CardGrid>

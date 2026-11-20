@@ -1,0 +1,35 @@
+---
+title: Courier Rules
+description: Courier-specific order rules and acceptance
+---
+
+# Courier Rules
+
+## Permitted Statuses
+
+Only `on_the_way` and `delivered` are allowed for courier.
+
+## Accept & Set as On the Way
+
+`PATCH /orders/:id/status { on_the_way }` — Courier accepts order.
+
+Backend checks:
+
+1. Order status must be `ready`.
+2. Order must not already have a courier assigned (`courierId` is null).
+3. Checks for `order already accepted by another courier` → `409`.
+4. Checks for `order assigned to another courier` → `403`.
+
+After checks pass, `courierId` is set to the courier's user ID.
+
+## Set as Delivered
+
+`PATCH /orders/:id/status { delivered }` — Courier marks order delivered.
+
+Only possible after `on_the_way`. No other transitions allowed via this endpoint.
+
+## Cancellation for Courier
+
+No cancellation endpoint for courier. Courier can only advance status via `PATCH /orders/:id/status`.
+
+If a courier needs to cancel, they must inform via chat or support.

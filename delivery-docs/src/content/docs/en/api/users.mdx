@@ -1,0 +1,75 @@
+---
+title: Users
+description: User profile endpoints and role management
+---
+
+# Users
+
+All user routes require `Authorization: Bearer <accessToken>` unless noted otherwise.
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/users/me` | any authenticated | Current user |
+| PATCH | `/users/me` | any authenticated | Name, phone, address, cover (avatar) |
+| GET | `/users/:slug` | public | Public profile |
+| PATCH | `/users/:id/role` | owner/admin | Change role |
+
+## Current User
+
+`GET /users/me` returns the profile of the authenticated user:
+
+```json
+{
+  "id": "…",
+  "name": "Jane Doe",
+  "slug": "jane-doe",
+  "email": "jane@example.com",
+  "role": "customer",
+  "cover": null,
+  "phone": "+380000000000",
+  "address": "Kyiv"
+}
+```
+
+Errors: `404 User not found`.
+
+## Update Profile
+
+`PATCH /users/me`
+
+All fields are optional:
+
+```json
+{ "name": "Jane Doe", "phone": "+380000000000", "address": "Kyiv", "cover": "https://…" }
+```
+
+`name` — at least 2 characters. Returns the same shape as `GET /users/me`.
+
+## Public Profile
+
+`GET /users/:slug` — no authentication. Returns:
+
+```json
+{ "id": "…", "name": "Jane Doe", "slug": "jane-doe", "cover": null, "role": "customer" }
+```
+
+Errors: `404 User not found`.
+
+## Change Role
+
+`PATCH /users/:id/role` — access: `owner` or `admin`.
+
+Request body:
+
+```json
+{ "role": "courier" }
+```
+
+`role` must be one of `owner`, `admin`, `customer`, `chef`, `courier`. Returns `{ id, name, slug, email, role }`. Errors: `404 User not found`.
+
+## Further Reading
+
+- [Authentication](/en/api/auth)
+- [Error Codes](/en/api/errors)

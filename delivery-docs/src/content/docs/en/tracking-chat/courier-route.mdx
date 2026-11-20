@@ -1,0 +1,43 @@
+---
+title: Courier Route
+description: How the courier app builds the route to the customer and shares its position
+---
+
+# Courier Route
+
+The route screen is `/orders/:id/map` in the courier app (`courier-app/src/views/OrderRouteView.vue`). It draws the courier, the customer and the driving route between them, and it is the place where the courier shares its position.
+
+## Steps
+
+1. Load the order (`GET /orders/:id`) — address, phone and `lat`/`lng`.
+2. Take the courier's own position from `locationStore` (`watchPosition`).
+3. Draw the courier marker, the customer marker and the polyline between them.
+4. Request a route from the public OSRM service:
+
+```
+https://router.project-osrm.org/route/v1/driving/{lng},{lat};{lng},{lat}?overview=full&geometries=geojson
+```
+
+5. Show distance and ETA; if OSRM is unavailable, fall back to a dashed straight line with an honest status message.
+6. On every position update (no more often than once per 8 s) send `courier_location_update` over WS and `PUT /orders/:id/location` over HTTP.
+
+## Route details
+
+| Aspect | Value |
+|--------|-------|
+| Start point | courier position (from `locationStore`) |
+| End point | customer point (`order.lat` / `order.lng`) |
+| Route line colour | `#0b57d0` |
+| Fallback line | dashed `6 8` when OSRM fails |
+| Distance | `km < 1 ? m : km.toFixed(1) km` |
+| ETA | at least 1 minute |
+
+The request is sent from the courier to the customer: `{from.lng},{from.lat};{to.lng},{to.lat}`. The geometry is read from `routeData.geometry.coordinates` and drawn as a Leaflet polyline. On success `routeInfo` holds `distance` and `duration`; on failure `routeStatus` is set to `Road route unavailable, showing a straight line`.
+
+## Sharing the position
+
+Sharing is throttled to once every 8 s (`lastSend` guard). Both transports are used: first the WS message `courier_location_update`, then the HTTP `PUT /orders/:id/location`. If the HTTP call fails, the status shows `Location saved locally, server is unreachable`. The HTTP path updates the database through the same `saveCourierLocation` service, so a client without a socket still sees the position by polling. See [Tracking Endpoints](/en/tracking-chat/endpoints) and [Client Behaviour & Fallbacks](/en/realtime/clients-fallbacks).
+
+## Without the courier's own position
+
+If the courier's geolocation is denied or unavailable, the start point is missing, so no route is built: the **Share my location** button is disabled and the card shows the address and `Route is being prepared`. If the **customer** point is missing, the card shows `The customer did not share a map point. Use the text address and phone number.` instead of the route line.

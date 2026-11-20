@@ -1,0 +1,43 @@
+---
+title: Маршрут кур'єра
+description: Як застосунок кур'єра будує маршрут до клієнта та надсилає свою позицію
+---
+
+# Маршрут кур'єра
+
+Екран маршруту — це `/orders/:id/map` у застосунку кур'єра (`courier-app/src/views/OrderRouteView.vue`). Він малює кур'єра, клієнта та маршрут між ними і саме тут кур'єр надсилає свою позицію.
+
+## Кроки
+
+1. Завантажує замовлення (`GET /orders/:id`) — адреса, телефон, `lat`/`lng`.
+2. Бере власну позицію з `locationStore` (`watchPosition`).
+3. Малює маркер кур'єра, маркер клієнта й лінію між ними.
+4. Запитує маршрут у публічного OSRM:
+
+```
+https://router.project-osrm.org/route/v1/driving/{lng},{lat};{lng},{lat}?overview=full&geometries=geojson
+```
+
+5. Показує відстань і ETA; якщо OSRM недоступний — пунктирну пряму та чесний статус.
+6. На кожне оновлення позиції (не частіше ніж раз на 8 с) шле `courier_location_update` у WS і `PUT /orders/:id/location` по HTTP.
+
+## Деталі маршруту
+
+| Аспект | Значення |
+|--------|----------|
+| Стартова точка | позиція кур'єра (з `locationStore`) |
+| Кінцева точка | точка клієнта (`order.lat` / `order.lng`) |
+| Колір лінії маршруту | `#0b57d0` |
+| Фолбек-лінія | пунктир `6 8`, коли OSRM не відповідає |
+| Відстань | `km < 1 ? m : km.toFixed(1) km` |
+| ETA | щонайменше 1 хвилина |
+
+Запит іде від кур'єра до клієнта: `{from.lng},{from.lat};{to.lng},{to.lat}`. Геометрію беруть із `routeData.geometry.coordinates` і малюють полілінією Leaflet. У разі успіху `routeInfo` містить `distance` і `duration`; у разі помилки `routeStatus` стає `Road route unavailable, showing a straight line`.
+
+## Надсилання позиції
+
+Надсилання обмежене тротлінгом — не частіше ніж раз на 8 с (перевірка `lastSend`). Використовуються обидва шляхи: спочатку WS-повідомлення `courier_location_update`, потім HTTP `PUT /orders/:id/location`. Якщо HTTP-виклик не вдався, статус показує `Location saved locally, server is unreachable`. HTTP-шлях оновлює БД через той самий сервіс `saveCourierLocation`, тому клієнт без сокета все одно побачить позицію через полінг. Деталі — у [Ендпоінти трекінгу](/uk/tracking-chat/endpoints) та [Поведінка клієнтів і фолбеки](/uk/realtime/clients-fallbacks).
+
+## Без власної позиції кур'єра
+
+Якщо геолокація кур'єра заборонена або недоступна, стартова точка відсутня, тому маршрут не будується: кнопка **Share my location** неактивна, а картка показує адресу й `Route is being prepared`. Якщо ж немає точки **клієнта**, замість лінії маршруту картка показує `The customer did not share a map point. Use the text address and phone number.`

@@ -1,0 +1,48 @@
+---
+title: Customer
+description: User stories for the customer role
+---
+
+# Customer
+
+## US-1. Find a dish and add to cart ✅
+
+1. Opens `/` — categories and 103 dishes with pagination.
+2. `/catalog`, `/category/:slug`, `/product/:slug` — filtering and dish card.
+3. «Add to Cart» → `POST /cart/items`; badge in header shows quantity.
+4. `/cart` — change quantity (`PATCH`), delete, clear.
+
+**Criterion:** after adding, position is visible in cart after page reload.
+
+## US-2. Place an order ✅
+
+1. `/checkout` shows positions, total, delivery type, address and phone (pre-filled from profile).
+2. «Use my location» — geolocation request; without it backend geocodes address.
+3. Payment: card (Stripe Elements) or cash.
+4. Submit → `POST /orders` → redirect to `/orders?success=1&order=<id>`.
+
+**Criterion:** order appears in "My Orders", in kitchen and in courier list after `ready`.
+
+## US-3. See status and courier ✅
+
+1. `/orders` — list with «Track order» / «Details» link.
+2. `/orders/:id` — timeline, map, courier card, «Courier position updated».
+3. Updates: WS `order:<id>` + polling every 5s.
+
+**Criterion:** after courier accepts order, status changes without manual reload, and courier marker moves with new coordinates.
+
+## US-4. Message the courier or support ✅
+
+1. On `/orders/:id` — chat block.
+2. `POST /chats/order/:orderId/messages` → message in `order:<id>` channel.
+3. Courier sees it in their chat card; admin sees via API.
+
+**Criterion:** message is stored and visible to other side after reload or instantly via socket.
+
+## US-5. Cancel an order ✅
+
+`POST /orders/:id/cancel` available while status `created` or `paid`. UI: no separate cancel button (API only).
+
+## US-6. Leave a review ❌
+
+API for reviews exists, but UI for reviews on dish page is absent.

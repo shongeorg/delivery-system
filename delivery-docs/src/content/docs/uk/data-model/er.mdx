@@ -1,0 +1,37 @@
+---
+title: ER-діаграма
+description: Діаграма сутностей бази даних
+---
+
+# ER-діаграма
+
+```mermaid
+erDiagram
+  USERS ||--o{ ORDERS : places
+  USERS ||--o{ ORDERS : delivers
+  USERS ||--o{ REFRESH_TOKENS : owns
+  USERS ||--o{ REVIEWS : writes
+  USERS ||--o| CARTS : has
+  USERS ||--o{ CHATS : opens
+  USERS ||--o| STAFF_SALARIES : has
+  USERS ||--o{ PAYROLL_PAYMENTS : receives
+  USERS ||--o| COURIER_LOCATIONS : reports
+
+  PRODUCTS ||--o{ ORDER_ITEMS : sold_as
+  ORDERS ||--o{ ORDER_ITEMS : contains
+  PRODUCTS ||--o{ PRODUCT_CATEGORIES : grouped
+  CATEGORIES ||--o{ PRODUCT_CATEGORIES : groups
+  PRODUCTS ||--o{ PRODUCT_TAGS : tagged
+  TAGS ||--o{ PRODUCT_TAGS : labels
+  PRODUCTS ||--o{ INGREDIENTS : has
+  PRODUCTS ||--o{ REVIEWS : rated
+
+  CARTS ||--o{ CART_ITEMS : holds
+  PRODUCTS ||--o{ CART_ITEMS : referenced
+
+  ORDERS ||--o| CHATS : thread
+  CHATS ||--o{ MESSAGES : contains
+  ORDERS ||--o{ COURIER_LOCATIONS : tracked_by
+```
+
+Схема: `backend/src/db/schema.ts` (22 таблиці). Гроші й координати — `numeric`, тому в API вони приходять як **рядки**; час — `timestamp` (UTC). Застосовується через `npm run db:push`. Міграцій у репозиторії немає.

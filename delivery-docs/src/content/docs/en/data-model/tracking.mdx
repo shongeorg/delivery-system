@@ -1,0 +1,20 @@
+---
+title: Tracking
+description: Courier location tracking table
+---
+
+# Tracking
+
+## Courier Locations
+
+Таблиця `courier_locations` — остання позиція кур'єра. Один рядок на кур'єра (upsert), не історія.
+
+| Поле | Тип | Призначення |
+|------|-----|-------------|
+| `courierId` | uuid (PK) | Посилання на `users.id` |
+| `orderId` | uuid | Призначене замовлення |
+| `lat` | numeric | Координата широти |
+| `lng` | numeric | Координата довготи |
+| `updatedAt` | timestamp | Коли останнє оновлення |
+
+Історії переміщень немає: зберігається лише остання точка. `updatedAt` показується клієнту як «Courier position updated HH:MM».

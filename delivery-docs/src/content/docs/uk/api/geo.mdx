@@ -1,0 +1,34 @@
+---
+title: Гео
+description: Геокодування адрес через Nominatim
+---
+
+# Гео
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| POST | `/geo/geocode` | автентифікована | `{ address }` → `{ lat, lng, displayName }`; `404`, якщо не знайдено, `502`, якщо Nominatim недоступний |
+
+## Геокодування
+
+`POST /geo/geocode`
+
+```json
+{ "address": "Khreshchatyk 1, Kyiv" }
+```
+
+`address` — щонайменше 3 символи. Адреса геокодується через Nominatim; результати (включно з невдачами) кешуються в пам'яті.
+
+Відповідь `200`:
+
+```json
+{ "lat": 50.447, "lng": 30.522, "displayName": "Khreshchatyk Street, Kyiv, Ukraine" }
+```
+
+Помилки: `404 Address not found`, `502 Geocoding service unavailable`, `502 Geocoding request failed`.
+
+## Дивіться також
+
+- [Трекінг і чат](/uk/tracking-chat/data-flow)

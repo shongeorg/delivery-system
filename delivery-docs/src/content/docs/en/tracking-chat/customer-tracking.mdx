@@ -1,0 +1,58 @@
+---
+title: Customer Tracking Page
+description: What the customer sees on /orders/:id and how it updates
+---
+
+# Customer Tracking Page
+
+The customer tracking page is `/orders/:id` in `frontend` (`frontend/src/routes/orders/[id]/+page.svelte`). It shows the order timeline, a Leaflet map with both markers, the courier card, the chat and the order details.
+
+## Timeline
+
+The timeline has five steps; the `paid` status is mapped onto the first step:
+
+| Status | Step label |
+|--------|------------|
+| `created` | Placed |
+| `cooking` | Cooking |
+| `ready` | Ready |
+| `on_the_way` | On the way |
+| `delivered` | Delivered |
+
+## Map
+
+The map uses Leaflet with OpenStreetMap tiles. It draws the customer marker and the courier marker, plus a line between them.
+
+| Marker | Colour | Popup |
+|--------|--------|-------|
+| Customer | dark `#111827` | `Delivery address` |
+| Courier | indigo `#4f46e5` | `Courier` |
+
+The line is drawn only when both points are present; the map fits its bounds to the available points.
+
+## Status line
+
+Below the map the page shows one of three lines:
+
+- `Courier position updated HH:MM` when `tracking.location` exists;
+- `Waiting for the courier to share a position` when a courier is assigned but no position is known;
+- `A courier will be assigned once the order is ready` when there is no courier yet.
+
+## Courier card
+
+When `tracking.courier` is present the page shows the courier's name and phone, with a `tel:` **Call** button.
+
+## How the page updates
+
+The page combines a WebSocket subscription with polling:
+
+| Mechanism | Detail |
+|-----------|--------|
+| WS channel | `order:<id>` (subscribed after `auth`) |
+| `order_updated` | reloads the tracking payload when `data.id` matches |
+| `courier_location` | moves the courier marker when `data.orderId` matches |
+| `chat_message` | reloads the messages |
+| Polling | `GET /orders/:id/tracking` and the messages every 5 s |
+| After `delivered` | polling stops |
+
+The socket reconnects automatically after 3 s while the component is alive. See [Realtime (WebSocket)](/en/realtime/connection) for the protocol and the endpoint shapes in [Tracking Endpoints](/en/tracking-chat/endpoints).

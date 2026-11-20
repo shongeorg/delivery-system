@@ -1,0 +1,32 @@
+---
+title: Health & OpenAPI
+description: Health-check endpoint and the OpenAPI / Scalar documentation
+---
+
+# Health & OpenAPI
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/health` | public | `{ "status": "ok" }` |
+| GET | `/api/docs` | public | Scalar UI |
+| GET | `/api/docs/openapi.json` | public | OpenAPI spec (partial) |
+
+## Health Check
+
+`GET /health` returns:
+
+```json
+{ "status": "ok" }
+```
+
+## Interactive Documentation
+
+The Scalar UI is served at `http://localhost:3000/api/docs`; the spec is at `/api/docs/openapi.json`.
+
+The OpenAPI document covers only `auth`, `products` and `categories`. The remaining groups (`/orders`, `/chats`, `/geo`, `/owner`, …) are documented in this reference only. The OpenAPI routes are mounted under `/api`, so their documented paths already include that prefix, while the equivalent runtime routes are also served at the root — for example `/api/auth/login` and `/auth/login`.
+
+## Further Reading
+
+- [Error Codes](/en/api/errors)

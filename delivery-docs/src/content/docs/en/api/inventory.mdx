@@ -1,0 +1,50 @@
+---
+title: Inventory
+description: Stock availability endpoints
+---
+
+# Inventory
+
+Inventory routes require `Authorization: Bearer <accessToken>`. Reading and quantity updates allow `owner`, `admin` or `chef`; create and delete require `owner` or `admin`.
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/inventory` | owner/admin/chef | Array of stock entries |
+| GET | `/inventory/:slug` | owner/admin/chef | A single entry |
+| POST | `/inventory` | owner/admin | Create |
+| PATCH | `/inventory/:id/quantity` | owner/admin/chef | Change quantity |
+| DELETE | `/inventory/:id` | owner/admin | Delete |
+
+## List & Get
+
+`GET /inventory` returns all entries sorted by name. `GET /inventory/:slug` returns a single entry. Errors: `404 Inventory item not found`.
+
+## Create
+
+`POST /inventory`
+
+```json
+{ "name": "Flour", "quantity": 25, "unit": "kg", "cover": "https://…" }
+```
+
+`name` — at least 2 characters, `quantity` — a positive number, `unit` — required. A unique `slug` is generated from the name. Response `201` — the created entry.
+
+## Change Quantity
+
+`PATCH /inventory/:id/quantity`
+
+```json
+{ "quantity": 10 }
+```
+
+Sets the quantity and updates `updatedAt`. Errors: `404 Inventory item not found`.
+
+## Delete
+
+`DELETE /inventory/:id` returns `{ "success": true }`.
+
+## Further Reading
+
+- [Owner Panel](/en/api/owner)

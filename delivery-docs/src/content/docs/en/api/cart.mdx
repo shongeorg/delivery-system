@@ -1,0 +1,59 @@
+---
+title: Cart
+description: Shopping cart endpoints for authenticated customers
+---
+
+# Cart
+
+Every cart route requires `Authorization: Bearer <accessToken>` and operates on the current user's cart.
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/cart` | authenticated | `{ cart, items }` |
+| POST | `/cart/items` | authenticated | `{ productId, quantity }` |
+| PATCH | `/cart/items/:id` | authenticated | Quantity |
+| DELETE | `/cart/items/:id` | authenticated | Remove an item |
+| DELETE | `/cart` | authenticated | Clear the cart |
+
+## Get Cart
+
+`GET /cart` returns the cart with its items; if none exists, an empty cart is created:
+
+```json
+{
+  "cart": { "id": "…", "userId": "…", "createdAt": "…", "updatedAt": "…" },
+  "items": [
+    { "id": "…", "cartId": "…", "productId": "…", "quantity": 2, "product": { … } }
+  ]
+}
+```
+
+## Add Item
+
+`POST /cart/items`
+
+```json
+{ "productId": "…", "quantity": 2 }
+```
+
+`quantity` — a positive number. If the product is already in the cart, the quantities are summed. Response `200`: `{ "success": true }`. Errors: `404 Product not found`.
+
+## Update Quantity
+
+`PATCH /cart/items/:id`
+
+```json
+{ "quantity": 3 }
+```
+
+`quantity` — a positive number. Returns `{ "success": true }`. Errors: `404 Cart item not found`.
+
+## Remove / Clear
+
+`DELETE /cart/items/:id` removes a single item; `DELETE /cart` deletes all items. Both return `{ "success": true }`.
+
+## Further Reading
+
+- [Orders](/en/api/orders)

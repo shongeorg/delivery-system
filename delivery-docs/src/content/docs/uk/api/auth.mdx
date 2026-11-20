@@ -1,0 +1,101 @@
+---
+title: Авторизація
+description: Ендпоінти авторизації — реєстрація, вхід і оновлення токенів
+---
+
+# Авторизація
+
+Базовий URL: `http://localhost:3000`. Усі відповіді — JSON. Захищені маршрути вимагають `Authorization: Bearer <accessToken>`. Помилки: `{ "error": "...", "code": 4xx }`.
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| POST | `/auth/register` | публічно | Створює `customer`, повертає пару токенів |
+| POST | `/auth/login` | публічно | `{ email, password }` → `{ user, accessToken, refreshToken }` |
+| POST | `/auth/refresh` | публічно | `{ refreshToken }` → нова пара; старий refresh видаляється |
+
+Access — 15 хв, refresh — 7 днів (зберігається в `refresh_tokens`).
+
+## Реєстрація
+
+`POST /auth/register`
+
+Тіло запиту:
+
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "password": "secret123",
+  "phone": "+380000000000",
+  "address": "Kyiv"
+}
+```
+
+`name` — щонайменше 2 символи, `password` — щонайменше 6, `email` — коректна адреса. `phone` та `address` необов'язкові. Новий користувач завжди отримує роль `customer`.
+
+Відповідь `201`:
+
+```json
+{
+  "user": {
+    "id": "…",
+    "name": "Jane Doe",
+    "slug": "jane-doe",
+    "email": "jane@example.com",
+    "role": "customer"
+  },
+  "accessToken": "…",
+  "refreshToken": "…"
+}
+```
+
+Помилки: `400 Email already exists`.
+
+## Вхід
+
+`POST /auth/login`
+
+Тіло запиту:
+
+```json
+{ "email": "jane@example.com", "password": "secret123" }
+```
+
+Відповідь `200`:
+
+```json
+{
+  "user": { "id": "…", "name": "Jane Doe", "slug": "jane-doe", "email": "jane@example.com", "role": "customer" },
+  "accessToken": "…",
+  "refreshToken": "…"
+}
+```
+
+Помилки: `401 Invalid credentials` (хибний email або пароль).
+
+## Оновлення токенів
+
+`POST /auth/refresh`
+
+Тіло запиту:
+
+```json
+{ "refreshToken": "…" }
+```
+
+Відповідь `200`:
+
+```json
+{ "accessToken": "…", "refreshToken": "…" }
+```
+
+Попередній refresh-токен видаляється з `refresh_tokens`, видається нова пара.
+
+Помилки: `400 Refresh token required`, `401 Invalid refresh token`, `404 User not found`.
+
+## Дивіться також
+
+- [Користувачі](/uk/api/users)
+- [Коди помилок](/uk/api/errors)

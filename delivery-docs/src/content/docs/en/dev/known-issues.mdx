@@ -1,0 +1,34 @@
+---
+title: Known Issues
+description: Known limitations and rough edges
+---
+
+# Known Issues
+
+## Behaviour
+
+- **Geolocation in the test browser.** Test Chrome has `denied` for geolocation, so the courier route is built without a start point. The code handles this honestly — the "Share my location" button stays inactive and the map shows the address — but OSRM cannot draw the route in such a browser.
+- **Cash.** An order with `paymentType: cash` is created with `paymentStatus: pending` and has no separate "paid in cash" endpoint. Revenue in finances counts `paid` orders only, so cash orders never reach it.
+- **No admin panel.** The `admin` role uses the owner panel. Its API allows `owner` and `admin`, but the UI guard admits only `owner`.
+- **Legacy chats.** The old `/chats` endpoints (customer ↔ admin) are still in the API but unused by the UI; the working chat is only `/chats/order/:orderId`.
+- **Concurrent acceptance.** The courier check-and-write is not transactional, so a race between two couriers is theoretically possible (no DB-level unique/conditional update guarantee); in tests the second courier gets `409`.
+
+## Documentation and code
+
+- **OpenAPI drift.** `/orders`, `/chats`, `/geo` and `/owner` are absent from the OpenAPI document. Every documented endpoint exists twice — once in `src/routes/*` (root) and once in `src/openapi/*` (`/api/*`) — and the OpenAPI handlers re-implement the logic instead of delegating, so the two can drift.
+
+## Tests and tooling
+
+- **Tests are not hermetic.** Backend Vitest hits a live `localhost:3000` and writes to the database. `src/tests/api.test.ts` has a stale assertion expecting an array from `/products`, while the endpoint returns `{ products, pagination }`.
+- **Frontend e2e needs a running server.** `playwright.config.ts` has no `webServer`; start `npm run dev` before `npm run test:e2e`.
+- **Chef panel lint.** `сhef-panel` has no committed ESLint config, so `npm run lint` fails until one is added. Use `npm run build` (`tsc -b && vite build`) for verification.
+
+## Response shape inconsistencies
+
+Response shapes are not uniform: `/products` and `/categories/:slug` return an object with `pagination`, while `/categories`, `/tags`, `/orders`, `/orders/my` and `/inventory` return bare arrays. A client must read the handler.
+
+## Related
+
+- [Testing](/en/dev/testing)
+- [Gaps & Limitations](/en/user-stories/gaps)
+- [Architecture](/en/architecture)

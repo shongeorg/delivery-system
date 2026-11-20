@@ -1,0 +1,27 @@
+---
+title: Client Behaviour & Fallbacks
+description: How each client handles WebSocket events and HTTP fallbacks
+---
+
+# Client Behaviour & Fallbacks
+
+| Application | Socket | What it does with events | Fallback |
+|-------------|--------|--------------------------|----------|
+| `courier-app` | persistent after login | `order_updated` / `new_order` / `order_cancelled` → reload list and current order; `chat_message` → add message; `courier_location` not received (it's the source) | 15s polling; location also via `PUT /orders/:id/location` |
+| `frontend` (tracking page) | only on `/orders/:id` | `order_updated` → reload tracking; `courier_location` → move marker; `chat_message` → reload messages | 5s polling for tracking and chat |
+| `frontend` (other pages) | none | — | regular REST requests |
+| `сhef-panel` | none | — | `refetchInterval: 5000` |
+| `ower-panel` | none | — | 10s (kitchen), 15s (dashboard), 30s (audit) |
+
+## Call Handling in Courier App
+
+The `courier-app` has WebRTC call support. When a `call_invite` is received:
+
+1. Client shows incoming call UI
+2. On accept: `attachMic()` → `call_accept` → `webrtc_offer`
+3. On decline: `call_decline` → UI back to idle
+4. On `webrtc_offer` from remote: `handleOffer()` → `webrtc_answer`
+5. ICE candidates flow bidirectionally
+6. On `call_end`: `call_end` message → media tracks closed
+
+Call timeout: 30 seconds (no answer → decline).

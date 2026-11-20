@@ -1,0 +1,68 @@
+---
+title: Tracking Endpoints
+description: HTTP endpoints for tracking and location sharing
+---
+
+# Tracking Endpoints
+
+Two HTTP endpoints power tracking. They are defined in `backend/src/routes/orders.ts` and share the `saveCourierLocation` service (`backend/src/services/tracking.ts`) with the WebSocket path.
+
+| Method | Path | Access | Response |
+|--------|------|--------|----------|
+| `GET` | `/orders/:id/tracking` | order owner, assigned courier, `owner`/`admin`/`chef` | `{ order, client, courier, location }` |
+| `PUT` | `/orders/:id/location` | `courier` only, and only for an order assigned to that courier | `{ orderId, courierId, lat, lng, updatedAt }` |
+
+## GET /orders/:id/tracking
+
+Access is granted to the order owner (`order.userId === userId`), the assigned courier (`order.courierId === userId`) or a staff role (`owner`, `admin`, `chef`). The response is:
+
+```json
+{
+  "order": {
+    "id": "...",
+    "status": "on_the_way",
+    "deliveryType": "delivery",
+    "address": "...",
+    "phone": "...",
+    "totalPrice": "...",
+    "paymentType": "card",
+    "paymentStatus": "paid",
+    "createdAt": "...",
+    "items": []
+  },
+  "client": { "lat": 48.6491, "lng": 35.0457 },
+  "courier": { "id": "...", "name": "Courier 1", "phone": "+380501111111" },
+  "location": { "lat": 48.4721, "lng": 35.0331, "updatedAt": "2026-11-20T11:43:08.000Z" }
+}
+```
+
+Any of `client`, `courier` or `location` may be `null`. `client` is `null` when the order has no `lat`/`lng`; `location` is `null` when the assigned courier has not written a position yet. `404` is returned when the order does not exist.
+
+## PUT /orders/:id/location
+
+The body is `{ "lat": number, "lng": number }`. The handler calls `saveCourierLocation(id, userId, lat, lng)` and maps its result to the HTTP status:
+
+| Condition | Status | Error |
+|-----------|--------|-------|
+| Order not found | `404` | `Order not found` |
+| Order is not assigned to this courier | `403` | `Order is not assigned to you` |
+| Coordinates are not finite or out of range | `400` | `Invalid coordinates` |
+| Success | `200` | — (returns the payload) |
+
+`courier_locations` stores one row per courier (upsert on `courierId`), so only the last position is kept. On success the handler broadcasts `courier_location` to the channel `order:<orderId>`:
+
+```mermaid
+sequenceDiagram
+  participant Courier as Courier app
+  participant API as Backend
+  participant DB as courier_locations
+  participant WS as channel order:&lt;id&gt;
+
+  Courier->>API: PUT /orders/:id/location { lat, lng }
+  API->>DB: upsert position (one row per courier)
+  API->>WS: courier_location { orderId, courierId, lat, lng, updatedAt }
+  API-->>Courier: 200 { orderId, courierId, lat, lng, updatedAt }
+  Note over WS: subscribers (customer page, owner/admin) receive it
+```
+
+See [Client Behaviour & Fallbacks](/en/realtime/clients-fallbacks) for how each client consumes these events.

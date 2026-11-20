@@ -1,0 +1,41 @@
+---
+title: Gaps & Limitations
+description: Differences from the initial specs, known gaps, and WebRTC
+---
+
+# Gaps & Limitations
+
+## Differences from the initial specifications
+
+| In `project.*.spec.md` | Now in the code |
+|------------------------|-----------------|
+| Owner panel in Angular | React 18 + Vite + TanStack Query + Recharts |
+| Courier only changes statuses | Plus OSRM route, geolocation, chat, courier assignment on the order |
+| Customer only sees an order list | Plus a tracking page with map, courier and chat |
+| Customer ↔ admin chat | Per-order chat: customer ↔ courier ↔ admin |
+| Coordinates not stored | `orders.lat/lng`, `courier_locations` |
+| Statuses changed without rules | Transition matrix + role permissions + protection against order snatching |
+| No finance module | `staff_salaries`, `payroll_payments`, `expenses`, `audit_logs`, net profit |
+
+## Known gaps
+
+- No separate admin panel: the `admin` role enters the owner panel, but the UI guard admits only `owner`.
+- No WebRTC call (see below), only `tel:`.
+- No courier movement history (only the last point is kept).
+- No "paid in cash" action → such orders never reach revenue.
+- No review UI.
+- No transactional protection against two couriers accepting the same order at once.
+- The OpenAPI document covers only part of the routes; `/orders`, `/chats`, `/geo` and `/owner` are not documented there.
+- Legacy `/chats` (customer ↔ admin) remain in the API but are unused by the UI; the working chat is only `/chats/order/:orderId`.
+
+## About WebRTC (calling over the internet)
+
+Technically possible, but WebSocket is not a call transport:
+
+- **WebSocket** carries only the signalling: `call_offer`, `call_answer`, `ice_candidate`, `call_hangup`. The infrastructure already exists (`broadcastToUser`, channels, authorization).
+- **Media** travels separately: WebRTC (SRTP/DTLS) directly between customer and courier.
+- It needs **STUN** (public address discovery) and **TURN** (relay behind symmetric NAT). Public STUN is free; TURN is a server and bandwidth, i.e. money.
+- `getUserMedia` works only in a **secure context**: `https://` or `localhost`. On `http://192.168.x.x` the microphone is unavailable.
+- It needs UI states: ringing, in-call, reject, hang up, permissions — plus handling of mobile constraints (background, screen lock, iOS Safari).
+
+So a call is a separate feature: signalling over the existing WS + a TURN server + new screens in both apps.

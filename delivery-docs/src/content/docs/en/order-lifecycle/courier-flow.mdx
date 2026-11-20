@@ -1,0 +1,32 @@
+---
+title: Courier Flow
+description: Courier order acceptance and completion flow
+---
+
+# Courier Flow
+
+```mermaid
+sequenceDiagram
+  participant Chef
+  participant API
+  participant Courier
+  participant WS as ws
+  participant Customer
+
+  Chef->>API: PATCH /orders/:id/status { ready }
+  API->>WS: order_updated
+  Courier->>API: PATCH /orders/:id/status { on_the_way }
+  API->>API: courierId := courier.id
+  API->>WS: order_updated
+  Courier->>API: PUT /orders/:id/location { lat, lng }
+  API->>WS: courier_location (order channel)
+  WS-->>Customer: courier_location
+  Courier->>API: PATCH /orders/:id/status { delivered }
+  API->>WS: order_updated
+```
+
+## Key Points
+
+- **Order acceptance** is the act of accepting the order; there's no admin "assign another courier" feature.
+- `courier_locations` stores only the latest position (upsert by `courierId`).
+- Order can formally have `courierId` and status `delivered` — history is preserved.

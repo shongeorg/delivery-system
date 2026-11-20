@@ -1,0 +1,68 @@
+---
+title: Ендпоінти трекінгу
+description: HTTP-ендпоінти для трекінгу та надсилання позиції
+---
+
+# Ендпоінти трекінгу
+
+Трекінг тримається на двох HTTP-ендпоінтах. Вони визначені в `backend/src/routes/orders.ts` і поділяють сервіс `saveCourierLocation` (`backend/src/services/tracking.ts`) зі шляхом через WebSocket.
+
+| Метод | Шлях | Доступ | Відповідь |
+|-------|------|--------|-----------|
+| `GET` | `/orders/:id/tracking` | власник замовлення, призначений кур'єр, `owner`/`admin`/`chef` | `{ order, client, courier, location }` |
+| `PUT` | `/orders/:id/location` | лише `courier`, і лише для замовлення, призначеного цьому кур'єру | `{ orderId, courierId, lat, lng, updatedAt }` |
+
+## GET /orders/:id/tracking
+
+Доступ надається власнику замовлення (`order.userId === userId`), призначеному кур'єру (`order.courierId === userId`) або ролі персоналу (`owner`, `admin`, `chef`). Відповідь:
+
+```json
+{
+  "order": {
+    "id": "...",
+    "status": "on_the_way",
+    "deliveryType": "delivery",
+    "address": "...",
+    "phone": "...",
+    "totalPrice": "...",
+    "paymentType": "card",
+    "paymentStatus": "paid",
+    "createdAt": "...",
+    "items": []
+  },
+  "client": { "lat": 48.6491, "lng": 35.0457 },
+  "courier": { "id": "...", "name": "Courier 1", "phone": "+380501111111" },
+  "location": { "lat": 48.4721, "lng": 35.0331, "updatedAt": "2026-11-20T11:43:08.000Z" }
+}
+```
+
+Будь-яке з полів `client`, `courier` чи `location` може бути `null`. `client` дорівнює `null`, коли в замовленні немає `lat`/`lng`; `location` — `null`, коли призначений кур'єр ще не записав позицію. Якщо замовлення не існує — `404`.
+
+## PUT /orders/:id/location
+
+Тіло — `{ "lat": number, "lng": number }`. Обробник викликає `saveCourierLocation(id, userId, lat, lng)` і зіставляє його результат зі статусом HTTP:
+
+| Умова | Статус | Помилка |
+|-------|--------|---------|
+| Замовлення не знайдено | `404` | `Order not found` |
+| Замовлення не призначене цьому кур'єру | `403` | `Order is not assigned to you` |
+| Координати не скінченні або поза межами | `400` | `Invalid coordinates` |
+| Успіх | `200` | — (повертає payload) |
+
+`courier_locations` зберігає один рядок на кур'єра (upsert за `courierId`), тож зберігається лише остання позиція. У разі успіху обробник розсилає `courier_location` у канал `order:<orderId>`:
+
+```mermaid
+sequenceDiagram
+  participant Courier as Застосунок кур'єра
+  participant API as Бекенд
+  participant DB as courier_locations
+  participant WS as канал order:&lt;id&gt;
+
+  Courier->>API: PUT /orders/:id/location { lat, lng }
+  API->>DB: upsert позиції (один рядок на кур'єра)
+  API->>WS: courier_location { orderId, courierId, lat, lng, updatedAt }
+  API-->>Courier: 200 { orderId, courierId, lat, lng, updatedAt }
+  Note over WS: підписники (сторінка клієнта, owner/admin) отримують подію
+```
+
+Про те, як кожен клієнт споживає ці події, — у [Поведінка клієнтів і фолбеки](/uk/realtime/clients-fallbacks).

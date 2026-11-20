@@ -1,0 +1,55 @@
+---
+title: Тестування
+description: Набори тестів бекенду й фронтенду
+---
+
+# Тестування
+
+## Бекенд — Vitest
+
+Бекенд використовує [Vitest](https://vitest.dev/) (`vitest run`, `npm test` у теці `backend`).
+
+Набір **не герметичний**. `backend/src/tests/api.test.ts` звертається через `fetch` до живого API на `http://localhost:3000` і пише в ту саму базу. Перед запуском:
+
+1. Запустіть бекенд: `npm run dev` у теці `backend`.
+2. Переконайтеся, що базу засіяно (`npm run db:seed`).
+
+Мок-сервера чи бази в пам'яті немає, тому падіння набору не обов'язково означає зламаний код.
+
+### Застаріла асерція
+
+`src/tests/api.test.ts` досі очікує, що `GET /products` повертає голий масив (`expect(Array.isArray(data)).toBe(true)`), тоді як ендпоінт тепер повертає `{ products, pagination }`. Ця асерція падає на поточному API. Вважайте її застарілим тестом, а не регресією, яку треба лагодити в продукті.
+
+```bash
+cd backend
+npm run dev      # термінал 1
+npm test         # термінал 2
+```
+
+## Фронтенд — Playwright
+
+У фронтенду два набори, обидва керовані Playwright.
+
+### Юніт-тести (`npm run test:unit`)
+
+Vitest із браузерним провайдером Playwright — тести виконуються у **справжньому Chromium**, а не в jsdom. Файли з іменем `*.svelte.spec.ts` ідуть у браузерний проєкт, інші `*.spec.ts` — у node-проєкт.
+
+### End-to-end тести (`npm run test:e2e`)
+
+`playwright.config.ts` задає `baseURL: http://localhost:3031` і **не має `webServer`**, тому дев-сервер треба запустити самостійно перед запуском e2e:
+
+```bash
+cd frontend
+npm run dev        # термінал 1, http://localhost:3031
+npm run test:e2e   # термінал 2
+```
+
+Збираються лише файли з-під `frontend/tests/`; `src/routes/demo/playwright/page.svelte.e2e.ts` лежить поза `testDir` і ігнорується.
+
+`npm test` запускає юніт-набір один раз, а потім e2e.
+
+## Пов'язане
+
+- [Змінні середовища](/uk/dev/env)
+- [Команди БД](/uk/dev/database)
+- [Відомі проблеми](/uk/dev/known-issues)

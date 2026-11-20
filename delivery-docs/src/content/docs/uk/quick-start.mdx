@@ -1,0 +1,96 @@
+---
+title: Швидкий старт
+description: Встановлення та запуск усіх п'яти застосунків локально
+---
+
+# Швидкий старт
+
+Платформа — це п'ять незалежних застосунків навколо одного спільного REST/WebSocket API. Кореневого `package.json` немає: кожен застосунок ставиться й запускається зі своєї теки. Починайте з бекенду — решта застосунків залежать від нього.
+
+## Передумови
+
+- Node.js і npm.
+- База Neon PostgreSQL (рядок підключення `POSTGRES_URL`).
+- Тестові ключі Stripe — необов'язково, потрібні лише для оплати карткою.
+
+## 1. Бекенд — `backend` (порт 3000)
+
+```bash
+cd backend
+npm install
+cp .env.example .env    # POSTGRES_URL, JWT_SECRET, JWT_REFRESH_SECRET, STRIPE_*
+npm run db:push         # застосувати схему до бази даних
+npm run db:seed         # завантажити демо-дані й тестові акаунти
+npm run dev             # http://localhost:3000
+```
+
+API віддає REST-маршрути і в корені (`/auth/login`), і під `/api` (`/api/auth/login`), а також WebSocket на `ws://localhost:3000/ws`. Інтерактивна документація OpenAPI — `http://localhost:3000/api/docs`.
+
+## 2. Вітрина клієнта — `frontend` (порт 3031)
+
+```bash
+cd frontend
+npm install
+cp .env.example .env    # PUBLIC_API_URL, PUBLIC_STRIPE_PUBLISHABLE_KEY
+npm run dev             # http://localhost:3031
+```
+
+## 3. PWA кур'єра — `courier-app` (порт 3032)
+
+```bash
+cd courier-app
+npm install
+npm run dev             # http://localhost:3032
+```
+
+## 4. Кухня — `сhef-panel` (порт 3033)
+
+```bash
+cd сhef-panel
+npm install
+npm run dev             # http://localhost:3033
+```
+
+> `сhef-panel` починається з кириличної `с` (U+0441), а не з латинської `c`. Беріть шлях у лапки або копіюйте як є.
+
+## 5. Власник — `ower-panel` (порт 3034)
+
+```bash
+cd ower-panel
+npm install
+npm run dev             # http://localhost:3034
+```
+
+`courier-app`, `сhef-panel` й `ower-panel` не мають файлу `.env`: адресу API `http://localhost:3000` зашито в їхніх API-клієнтах.
+
+## Тестові акаунти
+
+| Email | Пароль | Роль |
+|-------|--------|------|
+| `owner@test.com` | `owner123` | owner |
+| `admin@test.com` | `admin123` | admin |
+| `cura1@mail.com` | `cura123` | courier |
+| `cura2@mail.com` | `cura123` | courier |
+
+Створюються командою `npm run db:seed`. Роль клієнта з'являється після реєстрації нового акаунта.
+
+## Порти й CORS
+
+| Застосунок | Порт |
+|-------------|------|
+| `backend` | 3000 |
+| `frontend` | 3031 |
+| `courier-app` | 3032 |
+| `сhef-panel` | 3033 |
+| `ower-panel` | 3034 |
+
+CORS — це жорстко заданий список дозволених адрес у `backend/src/index.ts` для цих п'яти портів. Новий origin для розробки потрібно додати туди.
+
+## Далі
+
+- [Архітектура](/uk/architecture) — компоненти, потоки даних, авторизація.
+- [Життєвий цикл замовлення](/uk/order-lifecycle/statuses) — статуси й переходи.
+- [Права ролей](/uk/order-lifecycle/permissions) — хто що може.
+- [Змінні середовища](/uk/dev/env) — повний перелік змінних.
+- [Команди БД](/uk/dev/database) — команди схеми й сідингу.
+- [Тестування](/uk/dev/testing) — як запускати набори тестів.

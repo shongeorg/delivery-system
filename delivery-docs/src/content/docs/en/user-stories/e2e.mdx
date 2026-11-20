@@ -1,0 +1,30 @@
+---
+title: Cross-cutting Scenarios
+description: Verified end-to-end scenarios
+---
+
+# Cross-cutting Scenarios
+
+Scenarios verified across more than one application.
+
+## E2E-1. Full delivery cycle ✅
+
+1. The customer places a cash order with an address → `created`.
+2. Kitchen: `cooking` → `ready`.
+3. Courier accepts → `on_the_way`, `courierId` recorded.
+4. Courier sends a location → the customer sees the marker.
+5. Courier: `delivered` → the customer sees a completed timeline.
+6. Owner panel: the order with its courier appears in `/kitchen`.
+
+## E2E-2. Expired session ✅
+
+In `courier-app`, replacing the access token with an invalid one leads to `GET /orders` `401` → `POST /auth/refresh` `200` → the retried `GET /orders` `200`, list intact. If both the access token and the refresh fail, `logout()` runs and the app redirects to `/`. `frontend`, `сhef-panel` and `ower-panel` behave the same way (interceptors that retry once).
+
+## E2E-3. Chat between customer and courier ✅
+
+The customer (or an admin in the customer UI) writes → `201`, `sender` determined by role; the courier sees the message in their chat card; the owner receives a `chat_message` over WebSocket.
+
+## Related
+
+- [Role Permissions](/en/order-lifecycle/permissions)
+- [Tracking & Chat](/en/tracking-chat/data-flow)

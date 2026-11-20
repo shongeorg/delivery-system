@@ -1,0 +1,32 @@
+---
+title: Health & OpenAPI
+description: Ендпоінт перевірки стану та документація OpenAPI / Scalar
+---
+
+# Health & OpenAPI
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/health` | публічно | `{ "status": "ok" }` |
+| GET | `/api/docs` | публічно | Scalar UI |
+| GET | `/api/docs/openapi.json` | публічно | OpenAPI-специфікація (часткова) |
+
+## Перевірка стану
+
+`GET /health` повертає:
+
+```json
+{ "status": "ok" }
+```
+
+## Інтерактивна документація
+
+Scalar UI віддається на `http://localhost:3000/api/docs`; специфікація — на `/api/docs/openapi.json`.
+
+Документ OpenAPI покриває лише `auth`, `products` і `categories`. Решта груп (`/orders`, `/chats`, `/geo`, `/owner`, …) описана тільки в цьому довіднику. Маршрути OpenAPI змонтовані під `/api`, тож їхні документовані шляхи вже містять цей префікс, а відповідні робочі маршрути також віддаються в корені — наприклад `/api/auth/login` і `/auth/login`.
+
+## Дивіться також
+
+- [Коди помилок](/uk/api/errors)

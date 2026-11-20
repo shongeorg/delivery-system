@@ -1,0 +1,101 @@
+---
+title: Authentication
+description: Authentication endpoints — register, login and token refresh
+---
+
+# Authentication
+
+Base URL: `http://localhost:3000`. All responses are JSON. Protected routes require `Authorization: Bearer <accessToken>`. Errors: `{ "error": "...", "code": 4xx }`.
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| POST | `/auth/register` | public | Creates a `customer`, returns a token pair |
+| POST | `/auth/login` | public | `{ email, password }` → `{ user, accessToken, refreshToken }` |
+| POST | `/auth/refresh` | public | `{ refreshToken }` → new pair; the old refresh token is deleted |
+
+Access token — 15 minutes, refresh token — 7 days (stored in `refresh_tokens`).
+
+## Register
+
+`POST /auth/register`
+
+Request body:
+
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "password": "secret123",
+  "phone": "+380000000000",
+  "address": "Kyiv"
+}
+```
+
+`name` — at least 2 characters, `password` — at least 6, `email` — a valid email. `phone` and `address` are optional. The new user always gets the role `customer`.
+
+Response `201`:
+
+```json
+{
+  "user": {
+    "id": "…",
+    "name": "Jane Doe",
+    "slug": "jane-doe",
+    "email": "jane@example.com",
+    "role": "customer"
+  },
+  "accessToken": "…",
+  "refreshToken": "…"
+}
+```
+
+Errors: `400 Email already exists`.
+
+## Login
+
+`POST /auth/login`
+
+Request body:
+
+```json
+{ "email": "jane@example.com", "password": "secret123" }
+```
+
+Response `200`:
+
+```json
+{
+  "user": { "id": "…", "name": "Jane Doe", "slug": "jane-doe", "email": "jane@example.com", "role": "customer" },
+  "accessToken": "…",
+  "refreshToken": "…"
+}
+```
+
+Errors: `401 Invalid credentials` (wrong email or password).
+
+## Refresh
+
+`POST /auth/refresh`
+
+Request body:
+
+```json
+{ "refreshToken": "…" }
+```
+
+Response `200`:
+
+```json
+{ "accessToken": "…", "refreshToken": "…" }
+```
+
+The previous refresh token is removed from `refresh_tokens` and a new pair is issued.
+
+Errors: `400 Refresh token required`, `401 Invalid refresh token`, `404 User not found`.
+
+## Further Reading
+
+- [Users](/en/api/users)
+- [Error Codes](/en/api/errors)

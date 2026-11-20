@@ -1,0 +1,32 @@
+---
+title: Server → Client Events
+description: Events broadcast from WebSocket server to clients
+---
+
+# Server → Client Events
+
+| `type` | Data | Recipients |
+|--------|------|------------|
+| `connected` | `clientId` | Just-connected client |
+| `auth` | `status` | Response to authentication |
+| `subscribed` / `unsubscribed` | `channel` | Response to subscription |
+| `new_order` | order | All connected (global broadcast) |
+| `order_updated` | order | Channel `order:<id>` + global broadcast |
+| `order_cancelled` | order | Global broadcast |
+| `courier_location` | `orderId`, `courierId`, `lat`, `lng`, `updatedAt` | Channel `order:<id>` + `owner` and `admin` roles |
+| `chat_message` | message | Channel `order:<id>` |
+| `error` | `message` | Addressed to sender |
+
+### Call-related events (WebRTC signaling)
+
+| `type` | Data | Direction |
+|--------|------|-----------|
+| `call_invite` | `callId`, `orderId`, `mode`, `from` | Server → callee |
+| `call_ringing` | `callId`, `to` | Server → caller |
+| `call_accept` | `callId` | Bidirectional |
+| `call_decline` | `callId` | Bidirectional |
+| `call_end` | `callId`, `from` | Bidirectional |
+| `webrtc_offer` | `callId`, `from`, `sdp` | Bidirectional |
+| `webrtc_answer` | `callId`, `from`, `sdp` | Bidirectional |
+| `ice_candidate` | `callId`, `from`, `candidate` | Bidirectional |
+| `call_unavailable` | `callId`, `reason` | Server → caller |

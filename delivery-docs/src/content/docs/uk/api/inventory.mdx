@@ -1,0 +1,50 @@
+---
+title: Склад
+description: Ендпоінти запасів на складі
+---
+
+# Склад
+
+Маршрути складу вимагають `Authorization: Bearer <accessToken>`. Читання та зміна кількості доступні ролям `owner`, `admin` або `chef`; створення й видалення — лише `owner` або `admin`.
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/inventory` | owner/admin/chef | Масив залишків |
+| GET | `/inventory/:slug` | owner/admin/chef | Один запис |
+| POST | `/inventory` | owner/admin | Створити |
+| PATCH | `/inventory/:id/quantity` | owner/admin/chef | Змінити кількість |
+| DELETE | `/inventory/:id` | owner/admin | Видалити |
+
+## Список і один запис
+
+`GET /inventory` повертає всі записи, відсортовані за назвою. `GET /inventory/:slug` повертає один запис. Помилки: `404 Inventory item not found`.
+
+## Створення
+
+`POST /inventory`
+
+```json
+{ "name": "Flour", "quantity": 25, "unit": "kg", "cover": "https://…" }
+```
+
+`name` — щонайменше 2 символи, `quantity` — додатне число, `unit` — обов'язковий. Унікальний `slug` генерується з назви. Відповідь `201` — створений запис.
+
+## Зміна кількості
+
+`PATCH /inventory/:id/quantity`
+
+```json
+{ "quantity": 10 }
+```
+
+Встановлює кількість і оновлює `updatedAt`. Помилки: `404 Inventory item not found`.
+
+## Видалення
+
+`DELETE /inventory/:id` повертає `{ "success": true }`.
+
+## Дивіться також
+
+- [Панель власника](/uk/api/owner)

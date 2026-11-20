@@ -1,0 +1,53 @@
+---
+title: Chats
+description: Order chat and legacy direct chat endpoints
+---
+
+# Chats
+
+Two chat families exist: the order chat used by the UI (`/chats/order/:orderId`) and a legacy direct customer ↔ admin chat (`/chats`, `/:id/messages`).
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/chats/order/:orderId` | order participant | Get or create the order chat |
+| GET | `/chats/order/:orderId/messages` | participant | Message history |
+| POST | `/chats/order/:orderId/messages` | participant | `{ text }` |
+| GET | `/chats` | authenticated | Own chats; owner/admin — all |
+| POST | `/chats` | authenticated | Chat without an order (legacy) |
+| GET | `/chats/:id/messages` | participant | Legacy history |
+| POST | `/chats/:id/messages` | participant | Legacy message |
+
+## Order Chat
+
+`GET /chats/order/:orderId` — access: the order customer, the assigned courier, or `owner`/`admin`. Creates the chat on first access if it does not exist. Returns the chat object.
+
+`GET /chats/order/:orderId/messages` — the message history as an array of `{ id, sender, text, createdAt }`.
+
+`POST /chats/order/:orderId/messages`
+
+```json
+{ "text": "Hello" }
+```
+
+The sender is resolved automatically: the assigned courier → `courier`, `owner`/`admin` → `admin`, the order customer → `user`. Returns `201` with the created message and broadcasts `chat_message` to `order:<orderId>`.
+
+Errors: `404 Order not found`, `403 Forbidden`.
+
+## Legacy Chat
+
+`GET /chats` — a customer sees only their own chats, `owner`/`admin` see all.
+
+`POST /chats` — returns the current user's chat, creating it if needed.
+
+`GET /chats/:id/messages` — history; access: the chat owner or `owner`/`admin`.
+
+`POST /chats/:id/messages` with `{ "text": "…" }` — the sender is `user` for the chat owner and `admin` for `owner`/`admin`. Returns `201`.
+
+Errors: `404 Chat not found`, `403 Forbidden`.
+
+## Further Reading
+
+- [Order Chat](/en/tracking-chat/order-chat)
+- [Realtime](/en/realtime/connection)

@@ -1,0 +1,13 @@
+---
+title: Security & Limitations
+description: WebSocket security model and known limitations
+---
+
+# Security & Limitations
+
+- Without `auth` you cannot subscribe to a channel; without `courier` role you cannot send location.
+- Channel `order:<id>` inaccessible to unrelated clients (owner/courier/staff check).
+- **Global broadcasts** (`new_order`, `order_updated`, `order_cancelled`) go to ALL connected sockets, including client on tracking page. Data is full order object without items. For production this should be narrowed to roles/channels.
+- No heartbeat/ping: "dead" socket detected only on TCP close or next send attempt.
+- No message queue: events sent during reconnection are lost; that's exactly why clients poll state.
+- Location is last point only, no history; route is built client-side from current position and delivery point.

@@ -1,0 +1,16 @@
+---
+title: Settings & Audit
+description: Restaurant settings and audit log
+---
+
+# Settings & Audit
+
+## Settings
+
+`GET /owner/settings` — Налаштування закладу. Назва, телефон, адреса, години, валюта, податок, доставка.
+
+`PATCH /owner/settings` — Оновити налаштування.
+
+## Audit Log
+
+`GET /owner/audit-logs` — Останні записи журналу (`limit`). Журнал змін: зарплати, виплати, витрати, налаштування, ціни/видалення продуктів.

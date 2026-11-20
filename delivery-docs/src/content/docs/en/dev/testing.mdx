@@ -1,0 +1,55 @@
+---
+title: Testing
+description: Backend and frontend test suites
+---
+
+# Testing
+
+## Backend — Vitest
+
+The backend uses [Vitest](https://vitest.dev/) (`vitest run`, `npm test` in `backend`).
+
+The suite is **not hermetic**. `backend/src/tests/api.test.ts` calls a live API over `fetch` at `http://localhost:3000` and writes into that database. Before running it:
+
+1. Start the backend: `npm run dev` in `backend`.
+2. Make sure the database is seeded (`npm run db:seed`).
+
+There is no mock server and no in-memory database, so a failing suite does not necessarily mean broken code.
+
+### Stale assertion
+
+`src/tests/api.test.ts` still expects `GET /products` to return a bare array (`expect(Array.isArray(data)).toBe(true)`), but the endpoint now returns `{ products, pagination }`. That assertion fails against the current API. Treat it as a stale test, not a regression to fix in the product.
+
+```bash
+cd backend
+npm run dev      # terminal 1
+npm test         # terminal 2
+```
+
+## Frontend — Playwright
+
+The frontend has two suites, both driven by Playwright.
+
+### Unit tests (`npm run test:unit`)
+
+Vitest with the Playwright browser provider — the tests run in a **real Chromium**, not jsdom. Files named `*.svelte.spec.ts` go to the browser project; other `*.spec.ts` go to the node project.
+
+### End-to-end tests (`npm run test:e2e`)
+
+`playwright.config.ts` sets `baseURL: http://localhost:3031` and defines **no `webServer`**, so you must start the dev server yourself before running e2e:
+
+```bash
+cd frontend
+npm run dev        # terminal 1, http://localhost:3031
+npm run test:e2e   # terminal 2
+```
+
+Only files under `frontend/tests/` are collected; `src/routes/demo/playwright/page.svelte.e2e.ts` sits outside `testDir` and is ignored.
+
+`npm test` runs the unit suite once and then e2e.
+
+## Related
+
+- [Environment Variables](/en/dev/env)
+- [Database Commands](/en/dev/database)
+- [Known Issues](/en/dev/known-issues)

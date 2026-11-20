@@ -1,0 +1,96 @@
+---
+title: Quick Start
+description: Install and run all five applications locally
+---
+
+# Quick Start
+
+The platform is five independent applications around one shared REST/WebSocket API. There is no root `package.json`: each app installs and runs from its own directory. Start the backend first — every other app depends on it.
+
+## Prerequisites
+
+- Node.js and npm.
+- A Neon PostgreSQL database (the `POSTGRES_URL` connection string).
+- Stripe test keys — optional, needed only for card payments.
+
+## 1. Backend — `backend` (port 3000)
+
+```bash
+cd backend
+npm install
+cp .env.example .env    # POSTGRES_URL, JWT_SECRET, JWT_REFRESH_SECRET, STRIPE_*
+npm run db:push         # apply the schema to the database
+npm run db:seed         # load demo data and test accounts
+npm run dev             # http://localhost:3000
+```
+
+The API exposes REST routes both at the root (`/auth/login`) and under `/api` (`/api/auth/login`), plus a WebSocket server at `ws://localhost:3000/ws`. Interactive OpenAPI docs are at `http://localhost:3000/api/docs`.
+
+## 2. Customer storefront — `frontend` (port 3031)
+
+```bash
+cd frontend
+npm install
+cp .env.example .env    # PUBLIC_API_URL, PUBLIC_STRIPE_PUBLISHABLE_KEY
+npm run dev             # http://localhost:3031
+```
+
+## 3. Courier PWA — `courier-app` (port 3032)
+
+```bash
+cd courier-app
+npm install
+npm run dev             # http://localhost:3032
+```
+
+## 4. Kitchen — `сhef-panel` (port 3033)
+
+```bash
+cd сhef-panel
+npm install
+npm run dev             # http://localhost:3033
+```
+
+> `сhef-panel` begins with a Cyrillic `с` (U+0441), not an ASCII `c`. Quote or paste the path.
+
+## 5. Owner — `ower-panel` (port 3034)
+
+```bash
+cd ower-panel
+npm install
+npm run dev             # http://localhost:3034
+```
+
+`courier-app`, `сhef-panel` and `ower-panel` have no `.env` file: the API URL `http://localhost:3000` is hard-coded in their API clients.
+
+## Test accounts
+
+| Email | Password | Role |
+|-------|----------|------|
+| `owner@test.com` | `owner123` | owner |
+| `admin@test.com` | `admin123` | admin |
+| `cura1@mail.com` | `cura123` | courier |
+| `cura2@mail.com` | `cura123` | courier |
+
+Created by `npm run db:seed`. The customer role appears after registering a new account.
+
+## Ports and CORS
+
+| Application | Port |
+|-------------|------|
+| `backend` | 3000 |
+| `frontend` | 3031 |
+| `courier-app` | 3032 |
+| `сhef-panel` | 3033 |
+| `ower-panel` | 3034 |
+
+CORS is a hard-coded allowlist in `backend/src/index.ts` for these five ports. A new development origin must be added there.
+
+## Next steps
+
+- [Architecture](/en/architecture) — components, data flows, authorization.
+- [Order Lifecycle](/en/order-lifecycle/statuses) — statuses and transitions.
+- [Role Permissions](/en/order-lifecycle/permissions) — who can do what.
+- [Environment Variables](/en/dev/env) — the full list of variables.
+- [Database Commands](/en/dev/database) — schema and seed commands.
+- [Testing](/en/dev/testing) — how to run the suites.

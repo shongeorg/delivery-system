@@ -1,0 +1,70 @@
+---
+title: Courier App (Vue PWA)
+description: Courier delivery app — routes, Pinia stores, WebSocket and route planning
+---
+
+# Courier App (Vue PWA)
+
+The courier app: an installable, mobile-first PWA where a courier picks up ready orders, drives to the customer and shares their live position. Built with **Vue 3**, **Pinia** and **vue-router**, plus **Leaflet** for maps. It runs on port `3032`.
+
+## Stack, port, role
+
+| Stack | Port | Role |
+|-------|------|------|
+| Vue 3 + Pinia + vue-router + Leaflet + Tailwind + `vite-plugin-pwa` | `3032` | Courier: available deliveries, pickup, delivery, live location, calls |
+
+## Routes
+
+Defined in `src/router/index.js`:
+
+| Route | Name | Screen |
+|-------|------|--------|
+| `/` | `login` | Sign in (redirects to `/orders` when already authenticated) |
+| `/orders` | `orders` | Deliveries board with Available / Active / Completed tabs |
+| `/orders/:id` | `order-detail` | Order details, status actions and chat |
+| `/orders/:id/map` | `order-route` | Route to the customer on a map |
+| `/map` | `map` | Free map view |
+| `/profile` | `profile` | Courier profile and delivery stats |
+
+Every route except `/` sets `meta.requiresAuth`; the `beforeEach` guard redirects unauthenticated users to `/` and authenticated users away from `/`.
+
+## State management
+
+Pinia stores in `src/stores/`:
+
+- `auth.js` — `user`, `accessToken`, `refreshToken`, `isAuthenticated`, `isCourier`; `login`, `refresh`, `logout`, `init` (restores tokens from `localStorage`).
+- `order.js` — `orders`, `currentOrder`; `fetchOrders`, `fetchOrderById`, `updateStatus`, `acceptOrder` (`on_the_way`), `completeOrder` (`delivered`).
+- `chat.js` — order messages; `load`, `send`, `receive` (deduplicated by `id`).
+- `location.js` — browser geolocation via `navigator.geolocation.watchPosition` (`startTracking`, `stopTracking`).
+- `socket.js` — WebSocket lifecycle and message routing; `sendLocationUpdate`.
+- `call.js` — WebRTC voice calls (see below).
+
+## Talking to the API
+
+- `src/api/client.js` — an axios instance with a hardcoded base URL `http://localhost:3000`.
+- A request interceptor adds `Authorization: Bearer <accessToken>`.
+- A response interceptor handles `401`: it calls `authStore.refresh()` once (`refreshOnce` dedupe), retries the original request, and if the refresh fails it calls `logout()` and redirects to `/`.
+- Polling: `OrdersView.vue` and `OrderDetailView.vue` re-fetch every `15 s`.
+
+Realtime (`src/stores/socket.js`) connects to `ws://localhost:3000/ws`:
+
+- On open it sends `auth` with the access token, re-subscribes stored channels and subscribes to the `orders` channel.
+- Handles `order_updated`, `new_order` and `order_cancelled` by re-fetching orders, `chat_message` via the chat store, and the whole `call_*` / `webrtc_*` / `ice_candidate` family via the call store.
+- Reconnects after `3 s` on close.
+
+Related: [Realtime](/en/realtime/connection), [Tracking & Chat](/en/tracking-chat/data-flow).
+
+## Auth & roles
+
+- Sessions are user + tokens in `localStorage`; login and refresh go through the backend.
+- The router guard enforces only *authentication* (`requiresAuth`), not a specific role; `isCourier` exists but the app relies on the backend `allowRoles` for courier-only endpoints. The login screen ships demo courier accounts.
+
+## Key features
+
+- Deliveries board with status tabs and per-order cards.
+- Accept & pick up (`on_the_way`) and mark delivered (`delivered`) actions.
+- Order chat shared with the customer and support.
+- Route screen: courier marker, customer marker and distance/ETA from the public OSRM router (`router.project-osrm.org`), with a dashed straight-line fallback.
+- Location sharing: the courier position is pushed over WebSocket (`courier_location_update`) and `PUT /orders/:id/location`, throttled to once per `8 s`.
+- WebRTC voice calls to the customer: `call_invite` / `call_accept` / `call_decline` / `call_end` and `webrtc_offer` / `webrtc_answer` / `ice_candidate`, using public Google STUN servers and a `30 s` ringing timeout.
+- Installable PWA (manifest, `autoUpdate` service worker) with an offline-friendly shell.

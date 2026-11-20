@@ -1,0 +1,32 @@
+---
+title: Дзвінки (WebRTC)
+description: Ендпоінт присутності, що обслуговує дзвінки WebRTC
+---
+
+# Дзвінки (WebRTC)
+
+Сигналізація WebRTC проходить через WebSocket; REST API відкриває лише присутність.
+
+## Ендпоінти
+
+| Метод | Шлях | Доступ | Опис |
+|-------|------|--------|------|
+| GET | `/calls/presence` | автентифікована | Статус підтримки онлайн; з `orderId` — присутність учасників |
+
+## Присутність
+
+`GET /calls/presence` — вимагає `Authorization: Bearer <accessToken>`.
+
+Без `orderId`:
+
+```json
+{ "supportOnline": true }
+```
+
+З `?orderId=…` (доступ: клієнт замовлення, призначений кур'єр або `owner`/`admin`/`chef`):
+
+```json
+{ "supportOnline": true, "customerOnline": true, "courierOnline": false }
+```
+
+Помилки: `404 Order not found`, `403 Forbidden`.

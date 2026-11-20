@@ -1,0 +1,73 @@
+---
+title: Owner Panel
+description: Aggregated analytics, staff, payroll, finances, kitchen and settings endpoints
+---
+
+# Owner Panel
+
+All routes require `Authorization: Bearer <accessToken>` with role `owner` or `admin`.
+
+## Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/owner/overview` | owner/admin | Revenue (today/week/month/total), orders, average order value, staff, top products, low stock |
+| GET | `/owner/staff` | owner/admin | Accounts with salary terms (`search`, `role`) |
+| PATCH | `/owner/staff/:id` | owner/admin | Role, name, phone, blocking |
+| PUT | `/owner/staff/:id/salary` | owner/admin | `{ baseSalary, bonusPercentage, currency }` |
+| GET | `/owner/payroll` | owner/admin | Payments and totals (`period=YYYY-MM`) |
+| POST | `/owner/payroll` | owner/admin | `{ userId, amount, type, period?, note? }` |
+| GET | `/owner/finances` | owner/admin | Revenue, payroll, expenses, net profit, daily series |
+| GET | `/owner/expenses` | owner/admin | Expense list |
+| POST | `/owner/expenses` | owner/admin | Create an expense |
+| DELETE | `/owner/expenses/:id` | owner/admin | Delete an expense |
+| GET | `/owner/kitchen` | owner/admin | Queue, `waitingMinutes`, `courier` for assigned, low stock |
+| GET | `/owner/settings` | owner/admin | Restaurant settings |
+| PATCH | `/owner/settings` | owner/admin | Update settings |
+| GET | `/owner/audit-logs` | owner/admin | Recent audit entries, newest first (up to 200) |
+
+## Overview
+
+`GET /owner/overview` returns a dashboard aggregate: `revenue` (`today`/`week`/`month`/`total`), `orders` (`today`/`active`/`deliveredToday`/`total`/`averageValue`), `finance` (`payrollMonth`/`expensesMonth`/`netProfitMonth`), `staff` (`total`/`byRole`/`blocked`), `topProducts` (up to 5) and `lowStock` (up to 8 items). Revenue counts only orders with `paymentStatus: paid` that are not `cancelled`.
+
+## Staff
+
+`GET /owner/staff?search=&role=` — accounts enriched with salary terms. `search` matches name, email, phone or role; `role` filters by role.
+
+`PATCH /owner/staff/:id` — body: `{ "name"?, "role"?, "isBlocked"?, "phone"? }`. Only `owner` may modify an owner account; a user cannot change their own role. Writes an audit log.
+
+Errors: `404 User not found`, `403 Only the owner can modify an owner account`, `400 You cannot change your own role`.
+
+`PUT /owner/staff/:id/salary` — body: `{ "baseSalary": 1000, "bonusPercentage": 10, "currency": "USD" }`. Upserts the salary record and writes an audit log.
+
+## Payroll
+
+`GET /owner/payroll?period=YYYY-MM` — returns `{ payments, totals }`, where `totals` has `salary`, `bonus` and `all`; each payment is enriched with its `user`.
+
+`POST /owner/payroll` — body: `{ "userId": "…", "amount": 100, "type": "salary" | "bonus", "period"?, "note"? }`. Response `201` — the created payment. Errors: `404 User not found`.
+
+## Finances
+
+`GET /owner/finances?from=&to=` — defaults to the current month. Returns `{ from, to, totals, series, expenses, payrollPayments }`, where `totals` has `revenue`, `payroll`, `expenses`, `net`, `orders`, `paidOrders` and `series` is the daily breakdown with `revenue`/`payroll`/`expenses`/`net`.
+
+## Expenses
+
+`GET /owner/expenses` — the expense list, newest first.
+
+`POST /owner/expenses` — body: `{ "title": "…", "category": "…", "amount": 50, "note"? }`. Response `201`. Writes an audit log.
+
+`DELETE /owner/expenses/:id` — deletes an expense and writes an audit log. Errors: `404 Expense not found`.
+
+## Kitchen
+
+`GET /owner/kitchen` — returns `counts` per active status, the `queue` of active orders (each with `courier`, `items` and `waitingMinutes`), `oldestWaitingMinutes` and `lowStock`.
+
+## Settings
+
+`GET /owner/settings` — the restaurant settings; the record is created on first access.
+
+`PATCH /owner/settings` — body accepts `name`, `phone`, `address`, `workingHours`, `currency`, `taxRate`, `deliveryFee`, `logo`, `cover`. Upserts the settings and writes an audit log.
+
+## Audit Logs
+
+`GET /owner/audit-logs` — recent audit entries, newest first (up to 200), each enriched with its `user`.

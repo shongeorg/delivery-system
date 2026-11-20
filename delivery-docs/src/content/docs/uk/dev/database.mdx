@@ -1,0 +1,60 @@
+---
+title: Команди БД
+description: Drizzle, Neon HTTP і скрипти db:*
+---
+
+# Команди БД
+
+Бекенд використовує [Drizzle ORM](https://orm.drizzle.team/) поверх `drizzle-orm/neon-http` (серверлес HTTP-драйвер Neon) із базою Neon PostgreSQL, налаштованою в `backend/src/db/index.ts` і `backend/drizzle.config.ts`.
+
+Усі 22 таблиці визначені в `backend/src/db/schema.ts`.
+
+## Скрипти
+
+Запускайте їх із теки `backend`:
+
+| Команда | Що робить |
+|---------|-----------|
+| `npm run db:push` | Застосовує схему з `schema.ts` напряму до бази даних |
+| `npm run db:generate` | Генерує SQL-міграції зі схеми в `drizzle/` |
+| `npm run db:seed` | Завантажує демо-дані й тестові акаунти (`tsx src/db/seed.ts`) |
+| `npm run db:clear` | Видаляє всі дані, крім користувачів `owner` і `admin` (`tsx src/db/clear.ts`) |
+| `npm run db:studio` | Відкриває Drizzle Studio |
+
+Типова послідовність першого запуску:
+
+```bash
+cd backend
+npm run db:push
+npm run db:seed
+```
+
+## Міграції
+
+`drizzle/` у `.gitignore`, і жодних міграцій не закомічено. Зміни схеми застосовуйте командою `npm run db:push`; `db:generate` необов'язкова і лише створює локальні SQL-файли.
+
+## `db:clear`
+
+`db:clear` — **не** лише про продукти: вона видаляє всі дані, крім користувачів `owner` і `admin`. Користуйтеся нею обережно на спільній або засіяній базі.
+
+## 22 таблиці
+
+users, refresh_tokens, categories, products, tags, product_categories, product_tags, ingredients, inventory, orders, order_items, reviews, carts, cart_items, chats, messages, courier_locations, staff_salaries, payroll_payments, expenses, restaurant_settings, audit_logs.
+
+Помітні стовпці: `orders.courierId/lat/lng`, `courier_locations` (остання позиція кур'єра, upsert за кур'єром), `chats.orderId`.
+
+## Одноразові скрипти
+
+Одноразові скрипти в корені бекенду (`test-*.ts`, `create-*.ts`, `check-orders.ts`, ...) запускаються через `npx tsx <file>`:
+
+```bash
+cd backend
+npx tsx check-orders.ts
+```
+
+Вони лежать поза `tsconfig` (`rootDir: src`) і не збираються та не перевіряються типами.
+
+## Пов'язане
+
+- [Змінні середовища](/uk/dev/env)
+- [Модель даних](/uk/data-model/er)

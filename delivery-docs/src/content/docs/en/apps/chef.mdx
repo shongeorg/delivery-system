@@ -1,0 +1,57 @@
+---
+title: Chef Panel (React)
+description: Kitchen app — routes, TanStack Query, role guard and order handling
+---
+
+# Chef Panel (React)
+
+The kitchen panel: chefs see incoming orders and move them through cooking and readiness. Built with **React 18**, **react-router**, **TanStack Query** and **axios**, styled with Tailwind. It runs on port `3033`.
+
+## Stack, port, role
+
+| Stack | Port | Role |
+|-------|------|------|
+| React 18 + react-router + TanStack Query + axios + Tailwind 3 | `3033` | Kitchen: order queue, recipes, inventory (roles `owner`, `admin`, `chef`) |
+
+## Routes
+
+Defined in `src/App.tsx`:
+
+| Route | Screen |
+|-------|--------|
+| `/login` | Sign in |
+| `/` (`index`) | Dashboard |
+| `/orders` | Kitchen orders board |
+| `/recipes` | Recipes / menu list |
+| `/inventory` | Inventory management |
+
+Everything under `/` is wrapped in `RoleGuard allowedRoles={['owner', 'admin', 'chef']}` and rendered inside the shared `Layout` (sidebar with Dashboard / Orders / Recipes / Inventory).
+
+## State management
+
+- **TanStack Query** holds all server state. `src/hooks/useOrders.ts` defines `useOrders` (`refetchInterval: 5000`), `useOrder` and `useUpdateOrderStatus` (a mutation that invalidates the `orders` query on success).
+- **Auth context** in `src/hooks/useAuth.tsx` (`AuthProvider` / `useAuth`) exposes `user`, `isLoading`, `login`, `logout`. On mount it restores the session with `GET /users/me` if an `accessToken` exists.
+- Page-local state uses `useState` (filters, drafts, form fields).
+
+## Talking to the API
+
+- `src/api/axios.ts` — an axios instance with a hardcoded base URL `http://localhost:3000`.
+- A request interceptor attaches `Authorization: Bearer <accessToken>`.
+- A response interceptor handles `401`: it calls `POST /auth/refresh` once, saves the new pair and retries the request; if the refresh fails it clears the tokens and navigates to `/login`.
+- Polling: orders every `5 s` (`useOrders`), dashboard low-stock inventory every `15 s`.
+- The API modules live in `src/api/`: `auth.ts`, `orders.ts`, `products.ts` (also `categoriesApi`, `tagsApi`) and `inventory.ts`.
+
+The Vite dev server also defines an `/api` proxy to `http://localhost:3000`, but the axios client does not use it — it targets the backend directly.
+
+Related: [Architecture](/en/architecture), [Order Lifecycle](/en/order-lifecycle/statuses).
+
+## Auth & roles
+
+- `RoleGuard` (`src/components/RoleGuard.tsx`) shows a spinner while `isLoading`, redirects to `/login` when there is no `user`, and renders "Access denied" when `user.role` is not in `allowedRoles`. The panel is open to `owner`, `admin` and `chef`.
+
+## Key features
+
+- **Dashboard**: cards for New Orders, Waiting to Cook, Cooking Now and Ready for Courier, delivered revenue, and a list of low-stock items.
+- **Orders board**: filter tabs per status; actions "Accept & Start Cooking" / "Start Cooking" (`cooking`) and "Mark as Ready for Courier" (`ready`); a card-payment gate ("Awaiting card payment") and read-only states once the order is with the courier.
+- **Recipes**: searchable list of menu items loaded from `/products`.
+- **Inventory**: edit quantities, add and delete items (`/inventory`).

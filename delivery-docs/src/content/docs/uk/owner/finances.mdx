@@ -1,0 +1,15 @@
+---
+title: Фінанси
+description: Розрахунок доходу, виплат, витрат і чистого прибутку
+---
+
+# Фінанси
+
+`GET /owner/finances` розраховує:
+
+```
+revenue = сума totalPrice замовлень зі status != 'cancelled' І paymentStatus = 'paid'
+netProfit = revenue - payroll(period) - expenses(period)
+```
+
+Готівкові замовлення з `paymentStatus = pending` у дохід не потрапляють, поки їх не позначено оплаченими (окремого ендпоінта для цього немає).

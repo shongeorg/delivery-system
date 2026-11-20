@@ -1,0 +1,36 @@
+---
+title: Chat UI
+description: Where the order chat is rendered in each app and how senders are labelled
+---
+
+# Chat UI
+
+The order chat shares the same backend, but each app renders it differently and labels the sender in its own way.
+
+| Application | Where | Notes |
+|-------------|-------|-------|
+| `frontend` | "Chat with courier and support" block on `/orders/:id` | bubbles: own messages on the right, others on the left; `user` → "You" |
+| `courier-app` | "Chat" card on `/orders/:id` | `courier` → "You", `admin` → "Support", `user` → "Customer" |
+| `ower-panel` | API reachable (role `owner`/`admin`), no dedicated screen | — |
+
+## Sender labels in `frontend`
+
+The customer page maps a message to a label and aligns it by `sender`:
+
+| `sender` | Label | Alignment |
+|----------|-------|-----------|
+| `user` | `You` | right |
+| `courier` | `Courier` | left |
+| `admin` | `Support` | left |
+
+## Sender labels in `courier-app`
+
+The courier app labels the same `sender` values from the courier's point of view:
+
+| `sender` | Label |
+|----------|-------|
+| `courier` | `You` |
+| `admin` | `Support` |
+| `user` | `Customer` |
+
+Messages are delivered live to everyone on the order over `order:<id>`. See [Order Chat](/en/tracking-chat/order-chat) for the delivery mechanics and [Customer Tracking Page](/en/tracking-chat/customer-tracking) for the surrounding page.

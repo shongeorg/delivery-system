@@ -1,0 +1,63 @@
+---
+title: Owner Panel (React)
+description: Owner app — analytics, staff, payroll, finances and settings
+---
+
+# Owner Panel (React)
+
+The owner panel: a single control room for the restaurant. It shows live business metrics and lets the owner manage staff, payroll, finances, the kitchen view and restaurant settings. Built with **React 18**, **react-router**, **TanStack Query**, **axios** and **recharts**. It runs on port `3034`.
+
+## Stack, port, role
+
+| Stack | Port | Role |
+|-------|------|------|
+| React 18 + react-router + TanStack Query + axios + recharts + Tailwind 3 | `3034` | Owner: analytics and administration (`owner` only) |
+
+## Routes
+
+Defined in `src/App.tsx`:
+
+| Route | Screen |
+|-------|--------|
+| `/login` | Sign in |
+| `/` (`index`) | Dashboard |
+| `/staff` | Staff list |
+| `/staff/:id` | Staff member details |
+| `/payroll` | Payroll payments |
+| `/finances` | Finances and expenses |
+| `/kitchen` | Live kitchen queue |
+| `/settings` | Restaurant settings |
+| `/audit-logs` | Audit log |
+
+Everything under `/` is wrapped in `OwnerGuard` and rendered inside `Layout` (dark sidebar with Dashboard / Staff / Payroll / Finances / Kitchen / Restaurant / Audit Logs).
+
+## State management
+
+- **TanStack Query** holds all server state; each page defines its own `queryKey` and mutations invalidate the affected queries.
+- **Auth context** in `src/hooks/useAuth.tsx` (`AuthProvider` / `useAuth`) exposes `user`, `isLoading`, `login`, `logout`, restoring the session with `GET /users/me` when an `accessToken` is present.
+- Page-local state uses `useState` (filters, forms, modals).
+
+## Talking to the API
+
+- `src/api/axios.ts` — an axios instance with a hardcoded base URL `http://localhost:3000`.
+- A request interceptor attaches `Authorization: Bearer <accessToken>`.
+- A response interceptor handles `401`: it calls `POST /auth/refresh` once, stores the new pair and retries; if the refresh fails it clears the tokens and navigates to `/login`.
+- All owner endpoints are grouped under `/owner/*` in `src/api/owner.ts` (`getOverview`, `getStaff`, `updateStaff`, `updateSalary`, `getPayroll`, `createPayroll`, `getFinances`, `getExpenses`, `createExpense`, `deleteExpense`, `getKitchen`, `getSettings`, `updateSettings`, `getAuditLogs`).
+- Polling: Dashboard every `15 s`, Kitchen every `10 s`, Audit Logs every `30 s`; the remaining pages fetch on demand.
+
+Related: [Architecture](/en/architecture), [Owner Panel tables](/en/data-model/owner).
+
+## Auth & roles
+
+- `OwnerGuard` (`src/components/OwnerGuard.tsx`) redirects to `/login` when there is no `user` and shows "Access denied" unless `user.role === 'owner'`. The UI is therefore restricted to the owner, even though the backend `/owner/*` API also allows `admin`.
+
+## Key features
+
+- **Dashboard**: revenue today / week / month / total, order counts and average value, monthly finance (payroll, expenses, net profit), staff by role, top products, low stock and recent orders.
+- **Staff**: search and role filter, role changes, block/unblock, and a salary editor (`SalaryModal`).
+- **Staff details**: per-member salary, bonus and payroll history.
+- **Payroll**: salary/bonus payments with totals per period.
+- **Finances**: date-range revenue/payroll/expenses/net with a `recharts` line chart and expense CRUD.
+- **Kitchen**: live queue with status tabs and waiting-time warnings.
+- **Restaurant settings**: name, contacts, working hours, currency, tax rate, delivery fee, logo and cover.
+- **Audit logs**: searchable log of actions with entity, user and details.

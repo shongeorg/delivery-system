@@ -1,0 +1,73 @@
+---
+title: Frontend (SvelteKit)
+description: Customer storefront — routes, state, API and live tracking
+---
+
+# Frontend (SvelteKit)
+
+The customer storefront: browse the catalog, build a cart, place orders and follow delivery. Built with **SvelteKit 5** (runes mode forced for every app file) and **Tailwind CSS 4**. It runs on port `3031` and is the only client that reads its backend address from an environment variable.
+
+## Stack, port, role
+
+| Stack | Port | Role |
+|-------|------|------|
+| SvelteKit 5 (runes) + Vite + TypeScript + Tailwind CSS 4 | `3031` | Customer storefront: catalog, cart, checkout, orders, tracking, chat |
+
+## Routes
+
+Routing is file-based under `src/routes/`:
+
+| Route | Screen |
+|-------|--------|
+| `/` | Home page |
+| `/catalog` | Product catalog with pagination |
+| `/category/[slug]` | Products of a single category |
+| `/product/[slug]` | Product details (loaded in `+page.ts` via `getProduct`) |
+| `/cart` | Cart contents |
+| `/checkout` | Checkout and Stripe card payment |
+| `/login`, `/register` | Sign in / sign up |
+| `/orders` | The customer's orders (`GET /orders/my`) |
+| `/orders/[id]` | Order tracking: status stepper, map and chat |
+| `/profile/[slug]` | Customer profile (`getCurrentUser` / `updateCurrentUser`) |
+| `/demo`, `/demo/playwright` | Demo and test pages |
+
+## State management
+
+- **Svelte 5 runes** inside components: `$props()`, `$state()`, `$derived()`, `$effect()`. Legacy `export let` is rejected because runes are forced in `svelte.config.js`.
+- **Store modules** in `src/lib/stores/`:
+  - `userStore.ts` — current user, mirrored to `localStorage.user`.
+  - `cartStore.ts` — in-memory cart items (`addItem`, `removeItem`, `clear`).
+  - `cartCount.ts` — badge counter derived from `GET /cart` (`refreshCartCount`).
+  - `toast.ts` — transient success/error notifications (`showToast`).
+  - `socketStore.ts` — thin `WebSocket` wrapper (`connect`, `send`, `onMessage`).
+
+## Talking to the API
+
+`src/lib/api.ts` exposes `apiFetch<T>()`:
+
+- Base URL `API_URL = PUBLIC_API_URL || 'http://localhost:3000'` (`PUBLIC_API_URL` comes from `$env/static/public`).
+- Adds `Authorization: Bearer <accessToken>` taken from `localStorage`.
+- On `401` (except for `/auth/*` endpoints) it calls `POST /auth/refresh` once, stores the new tokens and retries the request; `refreshInFlight` deduplicates parallel refreshes.
+- Always resolves to `{ data, error, status }` and never throws.
+
+The tracking page (`/orders/[id]`) combines REST, WebSocket and polling:
+
+- Opens `ws(s)://<API_URL>/ws`, sends `auth` and then `subscribe` to `order:<id>`.
+- Reacts to `order_updated` (reload tracking), `courier_location` (move the marker) and `chat_message` (reload messages); reconnects after `3 s` on close.
+- Polls `GET /orders/:id/tracking` and the order messages every `5 s`, and stops once the order reaches `delivered`.
+- Draws the courier and delivery markers and a straight route line on a Leaflet / OpenStreetMap map.
+
+Related: [Realtime](/en/realtime/connection), [Tracking & Chat](/en/tracking-chat/data-flow).
+
+## Auth & roles
+
+- Tokens are kept in `localStorage`: `accessToken`, `refreshToken`, `user`.
+- There is no role guard in the UI — this is the customer app. Authorization is enforced by the backend (`allowRoles`). See [Order Lifecycle](/en/order-lifecycle/statuses).
+
+## Key features
+
+- Catalog with pagination and category filtering.
+- Product page showing categories, tags and ingredients, with "Add to Cart".
+- Cart and Stripe card checkout (`POST /payments/create-intent` then `POST /payments/confirm`; card form via `@stripe/stripe-js`).
+- Order list plus live tracking with map and order chat.
+- Toast notifications for cart and API feedback.

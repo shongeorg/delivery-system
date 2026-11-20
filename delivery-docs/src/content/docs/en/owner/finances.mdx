@@ -1,0 +1,15 @@
+---
+title: Finances
+description: Revenue, payroll, expenses, and net profit calculation
+---
+
+# Finances
+
+`GET /owner/finances` calculates:
+
+```
+revenue = sum of totalPrice from orders where status != 'cancelled' AND paymentStatus = 'paid'
+netProfit = revenue - payroll(period) - expenses(period)
+```
+
+Cash orders with `paymentStatus: pending` do not count toward revenue until marked `paid` (no endpoint for this).

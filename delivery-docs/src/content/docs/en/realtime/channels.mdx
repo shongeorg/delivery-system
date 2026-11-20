@@ -1,0 +1,9 @@
+---
+title: Channels
+description: WebSocket channels used in the system
+---
+
+# Channels
+
+- `order:<uuid>` — the only channel with access verification. Used for order status, courier location, and chat specific to a particular order.
+- `orders` — conditional channel used for courier app compatibility. Server accepts `new_order` / `order_updated` and so on globally, no special logic for `orders`.

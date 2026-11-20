@@ -1,0 +1,15 @@
+---
+title: Customer View
+description: What the customer sees at each order status
+---
+
+# Customer View
+
+| Status | `/orders/:id` Page |
+|--------|-------------------|
+| `created` / `paid` / `cooking` / `ready` | Timeline, delivery point marker, chat; no courier yet |
+| `on_the_way` | Courier marker, line to client, "Courier position updated HH:MM", courier card with phone and Call button |
+| `delivered` | Timeline completed, polling stopped |
+| `cancelled` | Order data without active tracking |
+
+Updates refresh every 5s via polling + WS channel `order:<id>` if connected.
