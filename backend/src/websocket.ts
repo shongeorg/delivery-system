@@ -3,7 +3,7 @@ import type { Server } from 'http';
 import jwt from 'jsonwebtoken';
 import { eq } from 'drizzle-orm';
 import { db } from './db/index.js';
-import { orders } from './db/schema.js';
+import { orders, users } from './db/schema.js';
 import { saveCourierLocation } from './services/tracking.js';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -16,6 +16,17 @@ interface Client {
 }
 
 const clients = new Map<string, Client>();
+
+interface ActiveCall {
+  id: string;
+  a: string;
+  b: string;
+  orderId: string | null;
+  mode: 'order' | 'support';
+  createdAt: number;
+}
+
+const calls = new Map<string, ActiveCall>();
 
 function send(client: Client, payload: unknown) {
   if (client.ws.readyState === WebSocket.OPEN) {
@@ -49,6 +60,7 @@ export function setupWebSocket(server: Server) {
     });
 
     ws.on('close', () => {
+      endCallsForUser(client.userId);
       clients.delete(clientId);
       console.log(`WebSocket client disconnected: ${clientId}`);
     });
@@ -81,6 +93,17 @@ function handleMessage(clientId: string, message: any) {
       break;
     case 'courier_location_update':
       handleCourierLocation(client, message);
+      break;
+    case 'call_invite':
+      handleCallInvite(client, message);
+      break;
+    case 'call_accept':
+    case 'call_decline':
+    case 'call_end':
+    case 'webrtc_offer':
+    case 'webrtc_answer':
+    case 'ice_candidate':
+      handleCallSignal(client, message);
       break;
     default:
       send(client, { type: 'error', message: 'Unknown message type' });
@@ -157,6 +180,151 @@ async function handleCourierLocation(client: Client, message: any) {
   broadcastToChannel(orderChannel(result.orderId), 'courier_location', payload);
   broadcastToRole('owner', 'courier_location', payload);
   broadcastToRole('admin', 'courier_location', payload);
+}
+
+export function isUserOnline(userId: string) {
+  return [...clients.values()].some(
+    (client) => client.userId === userId && client.ws.readyState === WebSocket.OPEN
+  );
+}
+
+export function isSupportOnline() {
+  return [...clients.values()].some(
+    (client) =>
+      (client.role === 'owner' || client.role === 'admin') &&
+      client.ws.readyState === WebSocket.OPEN
+  );
+}
+
+export function sendToUser(userId: string, payload: unknown) {
+  clients.forEach((client) => {
+    if (client.userId === userId) {
+      send(client, payload);
+    }
+  });
+}
+
+function unavailable(client: Client, callId: string | undefined, reason: string) {
+  send(client, { type: 'call_unavailable', data: { callId, reason } });
+}
+
+async function handleCallInvite(client: Client, message: any) {
+  if (!client.userId) {
+    return unavailable(client, message.callId, 'Authenticate first');
+  }
+
+  const callId = typeof message.callId === 'string' ? message.callId : '';
+  if (!callId || calls.has(callId)) return;
+
+  const mode: 'order' | 'support' = message.mode === 'support' ? 'support' : 'order';
+  const orderId = typeof message.orderId === 'string' ? message.orderId : null;
+
+  const caller = await db.query.users.findFirst({
+    where: eq(users.id, client.userId),
+    columns: { id: true, name: true, role: true },
+  });
+
+  if (!caller) return;
+
+  let target: string | null = null;
+
+  if (mode === 'support') {
+    const support = [...clients.values()].find(
+      (candidate) =>
+        (candidate.role === 'owner' || candidate.role === 'admin') &&
+        candidate.userId &&
+        candidate.ws.readyState === WebSocket.OPEN
+    );
+
+    if (!support?.userId) {
+      return unavailable(client, callId, 'Support is offline');
+    }
+
+    target = support.userId;
+  } else {
+    if (!orderId) {
+      return unavailable(client, callId, 'Order is required');
+    }
+
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+      columns: { userId: true, courierId: true },
+    });
+
+    const participants = [order?.userId, order?.courierId].filter(
+      (id): id is string => Boolean(id)
+    );
+
+    if (!order || !participants.includes(client.userId)) {
+      return unavailable(client, callId, 'Forbidden');
+    }
+
+    target = participants.find((id) => id !== client.userId) ?? null;
+
+    if (!target) {
+      return unavailable(client, callId, 'The other side is not assigned yet');
+    }
+  }
+
+  if (!isUserOnline(target)) {
+    return unavailable(client, callId, 'The other side is offline');
+  }
+
+  calls.set(callId, {
+    id: callId,
+    a: client.userId,
+    b: target,
+    orderId,
+    mode,
+    createdAt: Date.now(),
+  });
+
+  sendToUser(target, {
+    type: 'call_invite',
+    data: {
+      callId,
+      orderId,
+      mode,
+      from: { id: caller.id, name: caller.name, role: caller.role },
+    },
+  });
+
+  send(client, { type: 'call_ringing', data: { callId, to: target } });
+}
+
+function handleCallSignal(client: Client, message: any) {
+  const call = calls.get(message.callId);
+
+  if (!call || !client.userId) return;
+  if (call.a !== client.userId && call.b !== client.userId) return;
+
+  const peerId = call.a === client.userId ? call.b : call.a;
+
+  if (message.type === 'call_decline' || message.type === 'call_end') {
+    calls.delete(call.id);
+  }
+
+  sendToUser(peerId, {
+    type: message.type,
+    data: {
+      callId: call.id,
+      from: client.userId,
+      sdp: message.sdp,
+      candidate: message.candidate,
+    },
+  });
+}
+
+function endCallsForUser(userId?: string) {
+  if (!userId) return;
+
+  calls.forEach((call) => {
+    if (call.a !== userId && call.b !== userId) return;
+
+    const peerId = call.a === userId ? call.b : call.a;
+    sendToUser(peerId, { type: 'call_end', data: { callId: call.id, from: userId } });
+    calls.delete(call.id);
+  });
 }
 
 export function broadcast(event: string, data: any) {

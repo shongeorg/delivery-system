@@ -16,6 +16,7 @@ import tagsRouter from './routes/tags.js';
 import inventoryRouter from './routes/inventory.js';
 import chatsRouter from './routes/chats.js';
 import geoRouter from './routes/geo.js';
+import callsRouter from './routes/calls.js';
 import paymentsRouter from './routes/payments.js';
 import ownerRouter from './routes/owner.js';
 import { setupWebSocket } from './websocket.js';
@@ -35,6 +36,7 @@ app.use(cors({
     'http://localhost:3032',  // Courier App (Vue PWA)
     'http://localhost:3033',  // Chef Panel (React)
     'http://localhost:3034',  // Owner Panel (Angular)
+    'http://localhost:3035',  // Mobile App (Ionic Vue)
   ],
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -56,6 +58,7 @@ app.route('/tags', tagsRouter);
 app.route('/inventory', inventoryRouter);
 app.route('/chats', chatsRouter);
 app.route('/geo', geoRouter);
+app.route('/calls', callsRouter);
 app.route('/payments', paymentsRouter);
 app.route('/owner', ownerRouter);
 

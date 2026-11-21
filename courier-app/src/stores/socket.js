@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import { useOrderStore } from './order'
 import { useChatStore } from './chat'
+import { useCallStore } from './call'
 
 const WS_URL = 'ws://localhost:3000/ws'
 
@@ -73,6 +74,18 @@ export const useSocketStore = defineStore('socket', () => {
         chatStore.receive(message.data)
         break
 
+      case 'call_invite':
+      case 'call_accepted':
+      case 'call_declined':
+      case 'call_unavailable':
+      case 'call_end':
+      case 'call_ringing':
+      case 'webrtc_offer':
+      case 'webrtc_answer':
+      case 'ice_candidate':
+        useCallStore().handleMessage(message)
+        break
+
       default:
         break
     }
@@ -97,6 +110,7 @@ export const useSocketStore = defineStore('socket', () => {
     disconnect,
     subscribe,
     unsubscribe,
+    send,
     sendLocationUpdate
   }
 })
